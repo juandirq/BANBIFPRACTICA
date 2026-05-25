@@ -1,0 +1,113 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="screen-loader" id="screenLoader">
+    <div class="loader-logo">B</div>
+    <p>Cargando BanBif Digital...</p>
+</div>
+
+<section class="neo-auth">
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <div class="orb orb-one"></div>
+    <div class="orb orb-two"></div>
+    <div class="orb orb-three"></div>
+
+    <div class="neo-left">
+        <div class="neo-brand">
+            <div class="neo-logo">B</div>
+            <div>
+                <strong>BanBif</strong>
+                <span>Banca Digital</span>
+            </div>
+        </div>
+
+        <div class="neo-copy">
+            <span class="neo-chip">HOME BANKING PREMIUM</span>
+            <h1>Controla tu dinero con una experiencia digital moderna</h1>
+            <p>
+                Consulta tus ahorros, solicita creditos, realiza transferencias y revisa tu perfil
+                desde una plataforma visual, rapida e interactiva.
+            </p>
+
+            <div class="neo-buttons">
+                <a href="#loginBox" class="primary-btn">Ingresar</a>
+                <a href="/registro" class="glass-btn">Crear cuenta</a>
+            </div>
+        </div>
+
+        <div class="floating-dashboard tilt-card">
+            <div class="dash-top">
+                <span>Saldo disponible</span>
+                <strong>S/ 3,500.00</strong>
+            </div>
+
+            <div class="dash-bars">
+                <div style="width:85%"></div>
+                <div style="width:62%"></div>
+                <div style="width:74%"></div>
+            </div>
+
+            <div class="dash-actions">
+                <span>Ahorros</span>
+                <span>Creditos</span>
+                <span>Transferencias</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="neo-right">
+        <div class="login-box ultra-card tilt-card" id="loginBox">
+            <div class="card-shine"></div>
+
+            <div class="login-head">
+                <div class="neo-logo small">B</div>
+                <div>
+                    <h2>Bienvenido</h2>
+                    <p>Ingresa a tu portal BanBif</p>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="alert">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/login">
+                <div class="input-floating">
+                    <input type="text" name="document" value="60829685" required>
+                    <label>Documento</label>
+                </div>
+
+                <div class="input-floating password-floating">
+                    <input type="password" name="password" id="passwordInput" value="123456" required>
+                    <label>Contrasena</label>
+                    <button type="button" id="togglePassword">Ver</button>
+                </div>
+
+                <button type="submit" class="primary-btn full-btn magnetic">Ingresar al sistema</button>
+            </form>
+
+            <div class="demo-modern">
+                <div>
+                    <span>Usuario demo</span>
+                    <strong>60829685</strong>
+                </div>
+                <div>
+                    <span>Clave</span>
+                    <strong>123456</strong>
+                </div>
+            </div>
+
+            <div class="login-extra">
+                <a href="/registro">Crear cuenta nueva</a>
+                <span>Proyecto FastAPI + BanBif</span>
+            </div>
+        </div>
+
+        <div class="mini-cards-stack">
+            <div class="mini-bank-card card-one">Credito aprobado</div>
+            <div class="mini-bank-card card-two">Transferencia segura</div>
+            <div class="mini-bank-card card-three">Cuenta activa</div>
+        </div>
+    </div>
+</section>
+{% endblock %}

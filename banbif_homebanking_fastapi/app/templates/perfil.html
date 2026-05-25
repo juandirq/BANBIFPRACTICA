@@ -1,0 +1,41 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-title reveal">
+    <span class="chip">PERFIL</span>
+    <h1>Mi informacion personal</h1>
+    <p>Datos registrados dentro del portal Home Banking.</p>
+</section>
+
+<section class="two-columns reveal">
+    <div class="panel profile-main">
+        <div class="profile-avatar big-avatar">{{ user.full_name[0] }}</div>
+        <h2>{{ user.full_name }}</h2>
+        <p>Cliente BanBif Digital</p>
+
+        <div class="profile-score">
+            <span>Perfil completado</span>
+            <strong>85%</strong>
+            <div class="progress-bar">
+                <div style="width:85%"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="section-head">
+            <div>
+                <span class="chip">DATOS</span>
+                <h2>Informacion del cliente</h2>
+            </div>
+        </div>
+
+        <div class="data-list">
+            <div><span>Nombre</span><strong>{{ user.full_name }}</strong></div>
+            <div><span>DNI</span><strong>{{ user.document }}</strong></div>
+            <div><span>Correo</span><strong>{{ user.email }}</strong></div>
+            <div><span>Telefono</span><strong>{{ user.phone }}</strong></div>
+            <div><span>Direccion</span><strong>{{ user.address }}</strong></div>
+        </div>
+    </div>
+</section>
+{% endblock %}

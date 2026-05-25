@@ -1,0 +1,73 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-title reveal">
+    <span class="chip">TRANSFERENCIAS</span>
+    <h1>Transfiere de forma rapida</h1>
+    <p>Realiza operaciones entre cuentas registradas en el sistema.</p>
+</section>
+
+{% if error %}
+<div class="alert reveal">{{ error }}</div>
+{% endif %}
+
+{% if success %}
+<div class="success reveal">{{ success }}</div>
+{% endif %}
+
+<section class="two-columns reveal">
+    <div class="panel">
+        <div class="section-head">
+            <div>
+                <span class="chip">OPERACION</span>
+                <h2>Nueva transferencia</h2>
+            </div>
+        </div>
+
+        <form method="post" action="/transferencias">
+            <div class="input-group">
+                <label>Cuenta origen</label>
+                <select name="origin_account_id">
+                    {% for account in accounts %}
+                    <option value="{{ account.id }}">{{ account.account_number }} - S/ {{ "%.2f"|format(account.balance) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Cuenta destino</label>
+                <input type="text" name="destination_account_number" placeholder="Ejemplo: BBF-9685-001" required>
+            </div>
+
+            <div class="input-group">
+                <label>Monto</label>
+                <input type="number" step="0.01" name="amount" required>
+            </div>
+
+            <div class="input-group">
+                <label>Descripcion</label>
+                <input type="text" name="description" placeholder="Concepto de la transferencia" required>
+            </div>
+
+            <button type="submit" class="primary-btn">Transferir ahora</button>
+        </form>
+    </div>
+
+    <div class="panel transfer-preview">
+        <span class="chip">SEGURIDAD</span>
+        <h2>Antes de enviar</h2>
+        <div class="security-list">
+            <div>✓ Verifica el numero de cuenta destino.</div>
+            <div>✓ Confirma el monto antes de transferir.</div>
+            <div>✓ Usa una red segura para operar.</div>
+        </div>
+
+        <div class="animated-phone">
+            <div class="phone-screen">
+                <span>BanBif</span>
+                <strong>Transferencia segura</strong>
+                <p>Operacion protegida</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,2277 @@
+﻿import Pagos from "./pages/Pagos";
+import { useEffect, useMemo, useState } from "react";
+
+const API = "";
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data.message || data.detail || "Error de conexion");
+  }
+
+  return data;
+}
+
+function money(value) {
+  return `S/ ${Number(value || 0).toFixed(2)}`;
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [data, setData] = useState(null);
+  const [core, setCore] = useState(null);
+  const [view, setView] = useState("landing");
+  const [auth, setAuth] = useState("login");
+  const [toast, setToast] = useState("");
+  const [dark, setDark] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  function showToast(message) {
+    setToast(message);
+    setTimeout(() => setToast(""), 2600);
+  }
+
+  async function loadDashboard() {
+    const result = await api("/api/dashboard");
+    setData(result);
+    setUser(result.user);
+  }
+
+  async function loadCore() {
+    const result = await api("/api/core");
+    setCore(result);
+  }
+
+  useEffect(() => {
+    api("/api/me")
+      .then(() => loadDashboard().then(() => setView("dashboard")))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    document.body.className = dark ? "dark" : "";
+  }, [dark]);
+
+  useEffect(() => {
+    if (user && view === "core") {
+      loadCore().catch((e) => showToast(e.message));
+    }
+  }, [view, user]);
+
+  async function logout() {
+    await api("/api/logout", { method: "POST" });
+    setUser(null);
+    setData(null);
+    setCore(null);
+    setView("landing");
+    showToast("Sesion cerrada correctamente");
+  }
+
+  if (loading) return <Loader />;
+
+  if (view === "landing") {
+    return (
+      <>
+        <Landing
+          onLogin={() => {
+            setAuth("login");
+            setView("auth");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onRegister={() => {
+            setAuth("register");
+            setView("auth");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          setAuth={setAuth}
+          setView={setView}
+        />
+        <Toast text={toast} />
+      </>
+    );
+  }
+
+  if (view === "auth" || !user) {
+    return (
+      <>
+        {auth === "login" ? (
+          <Login
+            loadDashboard={loadDashboard}
+            setView={setView}
+            setAuth={setAuth}
+            showToast={showToast}
+          />
+        ) : (
+          <Register
+            loadDashboard={loadDashboard}
+            setView={setView}
+            setAuth={setAuth}
+            showToast={showToast}
+          />
+        )}
+        <Toast text={toast} />
+      </>
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <Sidebar user={user} view={view} setView={setView} logout={logout} />
+
+      <main className="main-shell">
+        <Topbar
+          user={user}
+          setView={setView}
+          dark={dark}
+          setDark={setDark}
+          showToast={showToast}
+        />
+
+        {view === "dashboard" && <Dashboard data={data} setView={setView} />}
+        {view === "ahorros" && <Ahorros data={data} reload={loadDashboard} showToast={showToast} />}
+        {view === "creditos" && <Creditos data={data} reload={loadDashboard} showToast={showToast} />}
+        {view === "transferencias" && <Transferencias data={data} reload={loadDashboard} showToast={showToast} />}
+        {view === "pagos" && <Pagos user={user} data={data} reload={loadDashboard} showToast={showToast} />}
+        {view === "perfil" && <Perfil user={user} />}
+        {view === "core" && (
+          <Core
+            core={core}
+            reload={async () => {
+              await loadCore();
+              await loadDashboard();
+            }}
+            showToast={showToast}
+          />
+        )}
+      </main>
+
+      <Toast text={toast} />
+    </div>
+  );
+}
+
+function Loader() {
+  return (
+    <section className="loader-lite-screen">
+      <div className="loader-lite-card">
+        <div className="loader-lite-logo">B</div>
+
+        <h1>BanBif</h1>
+        <span>Banca Digital</span>
+
+        <div className="loader-lite-spinner"></div>
+
+        <p>Validando acceso y cargando tus productos...</p>
+      </div>
+    </section>
+  );
+}
+
+function Landing({ onLogin, onRegister, setAuth, setView }) {
+  function openLoginFinal() {
+    if (typeof setAuth === "function") setAuth("login");
+    if (typeof setView === "function") setView("auth");
+    if (typeof onLogin === "function") onLogin();
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+  }
+
+  function openRegisterFinal() {
+    if (typeof setAuth === "function") setAuth("register");
+    if (typeof setView === "function") setView("auth");
+    if (typeof onRegister === "function") onRegister();
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 0);
+  }
+
+  function goLandingLogin() {
+    if (typeof onLogin === "function") onLogin();
+    window.dispatchEvent(new Event("banbif:open-login"));
+  }
+
+  function goLandingRegister() {
+    if (typeof onRegister === "function") onRegister();
+    window.dispatchEvent(new Event("banbif:open-register"));
+  }
+
+  const [active, setActive] = useState("productos");
+  const [product, setProduct] = useState(0);
+  const words = ["simple", "seguro", "digital", "cerca"];
+  const [word, setWord] = useState(0);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setWord((w) => (w + 1) % words.length);
+    }, 1800);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    function onScroll() {
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      const percent = height > 0 ? (window.scrollY / height) * 100 : 0;
+      setProgress(Math.min(100, percent));
+    }
+
+    window.addEventListener("scroll", onScroll);
+    onScroll();
+
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  function goTo(id) {
+    setActive(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const products = [
+    {
+      tag: "AHORROS",
+      title: "Organiza tu dinero",
+      text: "Consulta saldos, revisa movimientos y gestiona tus cuentas al instante.",
+      theme: "promo-blue",
+      detail: "El modulo de ahorros permite visualizar cuentas, consultar el saldo disponible y registrar operaciones como depositos.",
+      points: ["Consulta de saldo", "Movimientos recientes", "Gestion de cuenta"]
+    },
+    {
+      tag: "CREDITOS",
+      title: "Solicita tu prestamo",
+      text: "Simula cuotas, registra solicitudes y revisa el estado de evaluacion.",
+      theme: "promo-red",
+      detail: "El modulo de creditos permite simular cuotas, enviar una solicitud y seguir el estado de evaluacion.",
+      points: ["Simulador de cuotas", "Solicitud digital", "Seguimiento de estado"]
+    },
+    {
+      tag: "TRANSFERENCIAS",
+      title: "Opera con seguridad",
+      text: "Realiza transferencias entre cuentas con una experiencia clara y ordenada.",
+      theme: "promo-dark",
+      detail: "El modulo de transferencias permite seleccionar cuenta origen, destino, monto y descripcion de la operacion.",
+      points: ["Cuenta origen", "Cuenta destino", "Operacion registrada"]
+    }
+  ];
+
+  return (
+    <section className="landing interactive-landing">
+      <div className="orb orb-a"></div>
+      <div className="orb orb-b"></div>
+      <div className="orb orb-c"></div>
+      <div className="scroll-progress" style={{ width: `${progress}%` }}></div>
+
+      <header className="landing-header glass-nav">
+        <Brand subtitle="Banca Digital" />
+
+        <nav className="landing-nav">
+          <button className={active === "productos" ? "nav-active" : ""} onClick={() => goTo("productos")}>Productos</button>
+          <button className={active === "beneficios" ? "nav-active" : ""} onClick={() => goTo("beneficios")}>Beneficios</button>
+          <button className={active === "seguridad" ? "nav-active" : ""} onClick={() => goTo("seguridad")}>Seguridad</button>
+          <button type="button" className="nav-login" onClick={openLoginFinal}>Ingresar</button>
+        </nav>
+      </header>
+
+      <section className="landing-hero dynamic-hero">
+        <div className="landing-copy">
+          <span className="soft-pill animated-pill">BANCA DIGITAL BANBIF</span>
+          <h1>
+            Tu banco mas <span className="impact-word">{words[word]}</span> para operar mejor
+          </h1>
+          <p>
+            Consulta cuentas, revisa movimientos, solicita creditos, gestiona tu perfil
+            y realiza transferencias desde una experiencia digital moderna, segura,
+            ordenada y pensada como una banca digital profesional.
+          </p>
+
+          <div className="landing-actions">
+            <button type="button" className="landing-login-btn" onClick={openLoginFinal}>Ingresar a mi cuenta</button>
+            <button type="button" className="secondary" onClick={openRegisterFinal}>Crear cuenta</button>
+          </div>
+
+          <div className="landing-metrics animated-metrics">
+            <div>
+              <strong>24/7</strong>
+              <small>Atencion digital</small>
+            </div>
+            <div>
+              <strong>100%</strong>
+              <small>Operaciones en linea</small>
+            </div>
+            <div>
+              <strong>+Simple</strong>
+              <small>Gestion bancaria</small>
+            </div>
+          </div>
+        </div>
+
+        <div className="landing-visual advanced-visual">
+          <div className="floating-bubble bubble-one">Acceso seguro</div>
+          <div className="floating-bubble bubble-two">Perfil validado</div>
+          <div className="floating-bubble bubble-three">Operacion protegida</div>
+
+          <div className="phone-mockup premium-phone">
+            <div className="phone-screen">
+              <div className="phone-status">
+                <span>BanBif</span>
+                <i></i>
+              </div>
+
+              <strong>S/ 3,500.00</strong>
+              <p>Cuenta ahorro digital</p>
+              <b>**** 9685</b>
+
+              <div className="phone-transactions">
+                <div><span>Transferencia</span><b>- S/ 120</b></div>
+                <div><span>Deposito</span><b>+ S/ 500</b></div>
+                <div><span>Credito</span><b>En revision</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="experience-ribbon">
+        <div>
+          <b>01</b>
+          <strong>Inicio claro</strong>
+          <p>El cliente entiende rapidamente como ingresar o registrarse.</p>
+        </div>
+
+        <div>
+          <b>02</b>
+          <strong>Gestion centralizada</strong>
+          <p>Ahorros, creditos, transferencias y perfil en una sola plataforma.</p>
+        </div>
+
+        <div>
+          <b>03</b>
+          <strong>Operacion guiada</strong>
+          <p>Cada modulo muestra acciones simples y ordenadas para el usuario.</p>
+        </div>
+
+        <div>
+          <b>04</b>
+          <strong>Confirmacion visual</strong>
+          <p>El sistema informa cuando una sesion o registro se completa con exito.</p>
+        </div>
+      </section>
+
+      <button className="scroll-cue" onClick={() => goTo("productos")}>
+        Explorar plataforma
+        <span></span>
+      </button>
+
+      <section className="landing-section section-card" id="productos">
+        <Title
+          tag="PRODUCTOS"
+          title="Servicios digitales para el cliente"
+          text="El usuario puede navegar entre ahorros, creditos y transferencias desde una misma plataforma, con accesos rapidos, resumen visual y paneles informativos."
+        />
+
+        <div className="promo-grid">
+          {products.map((item, i) => (
+            <button
+              key={item.tag}
+              className={`promo-card ${item.theme} ${product === i ? "selected-card" : ""}`}
+              onMouseEnter={() => setProduct(i)}
+              onClick={() => setProduct(i)}
+            >
+              <span>{item.tag}</span>
+              <strong>{item.title}</strong>
+              <p>{item.text}</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="product-detail">
+          <div>
+            <span className="soft-pill">DETALLE DEL MODULO</span>
+            <h2>{products[product].title}</h2>
+            <p>{products[product].detail}</p>
+          </div>
+
+          <div className="detail-points">
+            {products[product].points.map((point) => (
+              <div key={point}>
+                <i>?</i>
+                <span>{point}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="landing-section" id="beneficios">
+        <div className="section-head">
+          <span className="soft-pill">BENEFICIOS</span>
+          <h2>Una experiencia pensada para banca digital</h2>
+          <p>La pagina guia al cliente desde el ingreso, el registro y la autenticacion, hasta la consulta de cuentas, creditos, transferencias y perfil digital.</p>
+        </div>
+
+        <div className="benefit-grid">
+          <div className="benefit-card">
+            <span>01</span>
+            <strong>Ingreso claro</strong>
+            <p>Login y registro separados para que el usuario entienda cada proceso.</p>
+          </div>
+          <div className="benefit-card">
+            <span>02</span>
+            <strong>Dashboard completo</strong>
+            <p>Resumen de saldo, productos activos, solicitudes y accesos rapidos.</p>
+          </div>
+          <div className="benefit-card">
+            <span>03</span>
+            <strong>Navegacion fluida</strong>
+            <p>Botones, buscador, tarjetas interactivas y secciones ordenadas.</p>
+          </div>
+        </div>
+
+        <div className="flow-line">
+          <div><b>1</b><span>Ingresar</span></div>
+          <div><b>2</b><span>Consultar</span></div>
+          <div><b>3</b><span>Operar</span></div>
+          <div><b>4</b><span>Confirmar</span></div>
+        </div>
+      </section>
+
+      <section className="landing-section security-banner interactive-security" id="seguridad">
+        <div>
+          <span className="soft-pill soft-dark">SEGURIDAD</span>
+          <h2>Confianza en cada operacion</h2>
+          <p>
+            La plataforma comunica seguridad, control y acceso protegido para que
+            el cliente sienta que esta dentro de un entorno bancario profesional.
+          </p>
+        </div>
+
+        <div className="security-points">
+          <div><i>?</i><span>Sesion segura</span></div>
+          <div><i>?</i><span>Datos del cliente</span></div>
+          <div><i>?</i><span>Operaciones verificadas</span></div>
+        </div>
+      </section>
+
+      {assistantOpen && (
+        <div className="assistant-panel">
+          <div className="assistant-head">
+            <div className="logo mini">B</div>
+            <div>
+              <strong>Asistente BanBif</strong>
+              <span>Guia rapida</span>
+            </div>
+          </div>
+
+          <div className="assistant-options">
+            <button onClick={() => goTo("productos")}>Ver productos</button>
+            <button onClick={() => goTo("beneficios")}>Ver beneficios</button>
+            <button onClick={() => goTo("seguridad")}>Ver seguridad</button>
+            <button onClick={onLogin}>Ingresar al portal</button>
+          </div>
+
+          <p>Explora la banca digital y luego accede a tu cuenta para gestionar tus operaciones.</p>
+        </div>
+      )}
+
+      <button className="assistant-fab" onClick={() => setAssistantOpen(!assistantOpen)}>
+        {assistantOpen ? "Cerrar" : "Ayuda"}
+      </button>
+
+      <button
+        className="back-top"
+        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        aria-label="Subir"
+        title="Subir"
+      >
+        ?
+      </button>
+    </section>
+  );
+}
+
+
+function Login({ loadDashboard, setView, setAuth, showToast }) {
+  const [showPass, setShowPass] = useState(false);
+  const [form, setForm] = useState({
+    document: "",
+    password: "",
+  });
+
+  function update(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    try {
+      await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({
+          document: form.document,
+          password: form.password,
+        }),
+      });
+
+      await loadDashboard();
+      setView("dashboard");
+      showToast("Sesion iniciada correctamente ?");
+    } catch (e) {
+      showToast(e.message || "Error de conexion");
+    }
+  }
+
+  return (
+    <section className="auth-layout login-screen">
+      <div className="auth-side">
+        <Brand subtitle="Banca Digital" />
+
+        <div className="auth-copy">
+          <span className="soft-pill">ACCESO DIGITAL</span>
+          <h1>Ingresa a tu banca digital</h1>
+          <p>
+            Administra tus cuentas, revisa tus movimientos y opera desde un
+            entorno moderno, seguro y profesional.
+          </p>
+        </div>
+
+        <div className="trust-panel">
+          <div className="trust-row">
+            <div className="trust-icon">?</div>
+            <div>
+              <strong>Acceso protegido</strong>
+              <p>Tu sesion bancaria se procesa de forma segura.</p>
+            </div>
+          </div>
+
+          <div className="trust-row">
+            <div className="trust-icon">?</div>
+            <div>
+              <strong>Experiencia confiable</strong>
+              <p>Consulta productos, ahorros y transferencias en un solo lugar.</p>
+            </div>
+          </div>
+
+          <div className="trust-row">
+            <div className="trust-icon">?</div>
+            <div>
+              <strong>Disponibilidad continua</strong>
+              <p>Tu banca digital lista para operar cuando la necesites.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="auth-form-wrap">
+        <form className="auth-card login-card" onSubmit={submit}>
+          <button type="button" className="back-link" onClick={() => setView("landing")}>
+            Volver al inicio
+          </button>
+
+          <div className="auth-card-header">
+            <div className="logo mini">B</div>
+            <div>
+              <h2>Iniciar sesion</h2>
+              <p>Accede al portal BanBif</p>
+            </div>
+          </div>
+
+          <label>DNI</label>
+          <input
+            required
+            maxLength="8"
+            value={form.document}
+            onChange={(e) => update("document", e.target.value.replace(/\D/g, ""))}
+            placeholder="Ingresa tu DNI"
+          />
+
+          <label>Contrasena</label>
+          <div className="password-row">
+            <input
+              required
+              type={showPass ? "text" : "password"}
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              placeholder="Ingresa tu contrasena"
+            />
+
+            <button type="button" className="ghost-btn" onClick={() => setShowPass(!showPass)}>
+              {showPass ? "Ocultar" : "Ver"}
+            </button>
+          </div>
+
+          <button className="primary big-btn">Ingresar ahora</button>
+
+          <button type="button" className="link-btn" onClick={() => setAuth("register")}>
+            Crear cuenta nueva
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+
+function Register({ loadDashboard, setView, setAuth, showToast }) {
+  const [showPass, setShowPass] = useState(false);
+  const [form, setForm] = useState({
+    document: "",
+    full_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    password: "",
+  });
+
+  const strength = useMemo(() => {
+    let s = 0;
+    if (form.password.length >= 6) s += 25;
+    if (form.password.length >= 10) s += 20;
+    if (/[A-Z]/.test(form.password)) s += 15;
+    if (/[0-9]/.test(form.password)) s += 20;
+    if (/[^A-Za-z0-9]/.test(form.password)) s += 20;
+    return s;
+  }, [form.password]);
+
+  const strengthText =
+    strength < 35 ? "Baja" :
+    strength < 70 ? "Media" :
+    "Alta";
+
+  function update(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    try {
+      await api("/api/register-complete", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+
+      await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({
+          document: form.document,
+          password: form.password,
+        }),
+      });
+
+      await loadDashboard();
+      setView("dashboard");
+      showToast("Cuenta creada y sesion iniciada con exito ?");
+    } catch (e) {
+      showToast(e.message || "Error de conexion");
+    }
+  }
+
+  return (
+    <section className="auth-layout">
+      <div className="auth-side">
+        <Brand subtitle="Registro Digital" />
+
+        <div className="auth-copy">
+          <span className="soft-pill">NUEVO CLIENTE</span>
+          <h1>Crea tu cuenta BanBif Digital</h1>
+          <p>
+            Registrate para acceder a tus productos, revisar tus operaciones y disfrutar
+            una experiencia bancaria moderna.
+          </p>
+        </div>
+
+        <div className="step-panel">
+          <div className="step-row">
+            <div className="step-badge">01</div>
+            <div>
+              <strong>Datos personales</strong>
+              <p>Completa tu DNI, nombre, telefono y direccion.</p>
+            </div>
+          </div>
+
+          <div className="step-row">
+            <div className="step-badge">02</div>
+            <div>
+              <strong>Correo electronico</strong>
+              <p>Registra tu canal digital de contacto.</p>
+            </div>
+          </div>
+
+          <div className="step-row">
+            <div className="step-badge">03</div>
+            <div>
+              <strong>Clave segura</strong>
+              <p>Crea una contrasena para proteger tu acceso.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="auth-form-wrap">
+        <form className="auth-card register-card" onSubmit={submit}>
+          <button type="button" className="back-link" onClick={() => setView("landing")}>
+            Volver al inicio
+          </button>
+
+          <div className="auth-card-header">
+            <div className="logo mini">B</div>
+            <div>
+              <h2>Crear cuenta</h2>
+              <p>Completa tus datos</p>
+            </div>
+          </div>
+
+          <label>DNI</label>
+          <input
+            required
+            maxLength="8"
+            value={form.document}
+            onChange={(e) => update("document", e.target.value.replace(/\D/g, ""))}
+            placeholder="Ingresa tu DNI"
+          />
+
+          <label>Nombre completo</label>
+          <input
+            required
+            value={form.full_name}
+            onChange={(e) => update("full_name", e.target.value)}
+            placeholder="Ingresa tu nombre completo"
+          />
+
+          <label>Correo</label>
+          <input
+            required
+            type="email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+            placeholder="Ingresa tu correo"
+          />
+
+          <label>Telefono</label>
+          <input
+            required
+            maxLength="9"
+            value={form.phone}
+            onChange={(e) => update("phone", e.target.value.replace(/\D/g, ""))}
+            placeholder="Ingresa tu telefono"
+          />
+
+          <label>Direccion</label>
+          <input
+            required
+            value={form.address}
+            onChange={(e) => update("address", e.target.value)}
+            placeholder="Ingresa tu direccion o ciudad"
+          />
+
+          <label>Contrasena</label>
+          <div className="password-row">
+            <input
+              required
+              type={showPass ? "text" : "password"}
+              value={form.password}
+              onChange={(e) => update("password", e.target.value)}
+              placeholder="Crea una contrasena segura"
+            />
+
+            <button type="button" className="ghost-btn" onClick={() => setShowPass(!showPass)}>
+              {showPass ? "Ocultar" : "Ver"}
+            </button>
+          </div>
+
+          <div className="strength-box">
+            <div className="strength-head">
+              <span>Seguridad de la clave</span>
+              <b>{strengthText}</b>
+            </div>
+            <div className="strength-bar">
+              <em style={{ width: `${strength}%` }}></em>
+            </div>
+          </div>
+
+          <button className="primary big-btn">Registrarme</button>
+
+          <button type="button" className="link-btn" onClick={() => setAuth("login")}>
+            Ya tengo cuenta
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+
+function Sidebar({ user, view, setView, logout }) {
+  const items = [
+    ["dashboard", "Inicio"],
+    ["ahorros", "Ahorros"],
+    ["creditos", "Creditos"],
+    ["transferencias", "Transferencias"],
+    ["pagos", "Pagos"],
+    ["perfil", "Perfil"],
+  ];
+
+  return (
+    <aside className="sidebar">
+      <Brand subtitle="Banca Digital" />
+
+      <nav className="side-nav">
+        {items.map(([k, label]) => (
+          <button
+            key={k}
+            className={view === k ? "active" : ""}
+            onClick={() => setView(k)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="side-user">
+        <div className="avatar">{user.full_name[0]}</div>
+        <strong>{user.full_name.split(" ")[0]}</strong>
+        <span>Cliente digital</span>
+      </div>
+
+      <button className="logout-btn" onClick={logout}>Cerrar sesion</button>
+    </aside>
+  );
+}
+
+function Topbar({ user, setView, dark, setDark, showToast }) {
+  const [search, setSearch] = useState("");
+  const [openNotif, setOpenNotif] = useState(false);
+
+  function submit(e) {
+    e.preventDefault();
+    const s = search.toLowerCase();
+
+    if (s.includes("ahorro")) setView("ahorros");
+    else if (s.includes("credito")) setView("creditos");
+    else if (s.includes("solicitud")) setView("creditos");
+    else if (s.includes("transfer")) setView("transferencias");
+    else if (s.includes("pago")) setView("pagos");
+    else if (s.includes("perfil")) setView("perfil");
+    else if (s.includes("inicio")) setView("dashboard");
+    else if (s.includes("core")) setView("creditos");
+    else showToast("Modulo no encontrado");
+  }
+
+  const notifications = [
+    {
+      code: "S",
+      title: "Sesion activa",
+      text: "Tu acceso a la banca digital se encuentra activo y protegido.",
+      type: "ok"
+    },
+    {
+      code: "P",
+      title: "Perfil protegido",
+      text: "Tus datos principales estan registrados para validar tus operaciones.",
+      type: "safe"
+    },
+    {
+      code: "O",
+      title: "Sin alertas pendientes",
+      text: "No tienes operaciones por confirmar en este momento.",
+      type: "info"
+    }
+  ];
+
+  return (
+    <header className="topbar premium-topbar">
+      <form className="search-bar" onSubmit={submit}>
+        <input
+          placeholder="Buscar: ahorros, creditos, transferencias, pagos..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </form>
+
+      <div className="top-actions">
+        <button className="soft-btn theme-btn" onClick={() => setDark(!dark)}>
+          {dark ? "Modo claro" : "Modo oscuro"}
+        </button>
+
+        <div className="notif-wrap">
+          <button
+            className="soft-btn notif-btn refined-notif-btn"
+            type="button"
+            onClick={() => setOpenNotif(!openNotif)}
+          >
+            Notificaciones
+            <em>{notifications.length}</em>
+          </button>
+
+          {openNotif && (
+            <div className="notif-panel refined-notif-panel">
+              <div className="notif-head refined-notif-head">
+                <div>
+                  <strong>Centro de notificaciones</strong>
+                  <span>Alertas y avisos de tu banca digital</span>
+                </div>
+
+                <button type="button" onClick={() => setOpenNotif(false)}>
+                  Cerrar
+                </button>
+              </div>
+
+              <div className="notif-list refined-notif-list">
+                {notifications.map((item, i) => (
+                  <div className={`notif-item refined-notif-item ${item.type}`} key={i}>
+                    <i>{item.code}</i>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{item.text}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="user-chip elevated">
+          <div className="avatar">{user.full_name[0]}</div>
+          <span>{user.full_name.split(" ")[0]}</span>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function Dashboard({ data, setView }) {
+  if (!data) return null;
+
+  return (
+    <>
+      <section className="hero-banner">
+        <div className="hero-info">
+          <span className="soft-pill soft-dark">RESUMEN DIGITAL</span>
+          <h1>Hola, {data.user.full_name.split(" ")[0]}</h1>
+          <p>Bienvenido a tu Home Banking BanBif Digital.</p>
+
+          <div className="hero-actions">
+            <button onClick={() => setView("transferencias")}>Nueva transferencia</button>
+            <button className="secondary" onClick={() => setView("creditos")}>Solicitar credito</button>
+          </div>
+        </div>
+
+        <div className="bank-card">
+          <span>BanBif Digital</span>
+          <strong>**** **** **** 9685</strong>
+          <div><small>Titular</small><b>{data.user.full_name}</b></div>
+          <div><small>Saldo</small><b>{money(data.total_balance)}</b></div>
+        </div>
+      </section>
+
+      <section className="session-strip">
+        <div className="session-card highlight">
+          <div className="session-avatar">{data.user.full_name[0]}</div>
+          <div>
+            <span className="live-pill"><i></i> Sesion activa</span>
+            <h3>Acceso confirmado</h3>
+            <p>Tu sesion bancaria se encuentra activa y operativa.</p>
+          </div>
+        </div>
+
+        <button className="session-card" onClick={() => setView("perfil")}>
+          <span>PERFIL</span>
+          <strong>Ver mis datos</strong>
+          <p>Revisa tu informacion personal registrada.</p>
+        </button>
+
+        <button className="session-card" onClick={() => setView("ahorros")}>
+          <span>CUENTAS</span>
+          <strong>Consultar ahorros</strong>
+          <p>Visualiza saldos y ultimos movimientos.</p>
+        </button>
+      </section>
+
+      <section className="smart-bank-strip">
+        <button className="smart-card" onClick={() => setView("ahorros")}>
+          <span>Consulta rapida</span>
+          <strong>Revisar saldo</strong>
+          <p>Accede a tus cuentas y movimientos recientes.</p>
+        </button>
+
+        <button className="smart-card" onClick={() => setView("transferencias")}>
+          <span>Operacion segura</span>
+          <strong>Transferir dinero</strong>
+          <p>Realiza una transferencia entre cuentas registradas.</p>
+        </button>
+
+        <button className="smart-card" onClick={() => setView("creditos")}>
+          <span>Producto financiero</span>
+          <strong>Simular credito</strong>
+          <p>Calcula una cuota estimada y envia tu solicitud.</p>
+        </button>
+      </section>
+
+      <section className="stats-grid">
+        <Card title="Saldo total" value={money(data.total_balance)} />
+        <Card title="Productos activos" value={data.accounts.length} />
+        <Card title="Solicitudes de credito" value={data.credits.length} />
+      </section>
+
+      <section className="promo-grid">
+        <button className="promo-card promo-blue" onClick={() => setView("ahorros")}>
+          <span>AHORRO DIGITAL</span>
+          <strong>Organiza tu dinero</strong>
+          <p>Consulta saldos y gestiona tus cuentas.</p>
+        </button>
+
+        <button className="promo-card promo-red" onClick={() => setView("creditos")}>
+          <span>CREDITO PERSONAL</span>
+          <strong>Simula tu prestamo</strong>
+          <p>Calcula cuotas y envia solicitudes.</p>
+        </button>
+
+        <button className="promo-card promo-dark" onClick={() => setView("transferencias")}>
+          <span>TRANSFERENCIAS</span>
+          <strong>Opera seguro</strong>
+          <p>Envia dinero entre cuentas rapidamente.</p>
+        </button>
+      </section>
+
+      <section className="split-grid">
+        <Panel title="Mis cuentas">
+          {data.accounts.map((a) => (
+            <Line key={a.id} title={a.account_type} text={a.account_number} value={money(a.balance)} />
+          ))}
+        </Panel>
+
+        <Panel title="Ultimos movimientos">
+          {data.movements.slice(0, 5).map((m) => (
+            <Line key={m.id} title={m.description} text={m.created_at} value={money(m.amount)} />
+          ))}
+        </Panel>
+      </section>
+    </>
+  );
+}
+
+function Ahorros({ data, reload, showToast }) {
+  const [account, setAccount] = useState(data?.accounts?.[0]?.id || "");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("Deposito a cuenta de ahorros");
+  const [goal, setGoal] = useState(5000);
+
+  const selectedAccount = useMemo(() => {
+    return data?.accounts?.find((a) => String(a.id) === String(account)) || data?.accounts?.[0];
+  }, [data, account]);
+
+  const accountMovements = useMemo(() => {
+    if (!selectedAccount) return [];
+    return (data?.movements || []).filter((m) => String(m.account_id) === String(selectedAccount.id));
+  }, [data, selectedAccount]);
+
+  const totalIncome = useMemo(() => {
+    return accountMovements
+      .filter((m) => Number(m.amount) > 0)
+      .reduce((sum, m) => sum + Number(m.amount || 0), 0);
+  }, [accountMovements]);
+
+  const totalOutcome = useMemo(() => {
+    return accountMovements
+      .filter((m) => Number(m.amount) < 0)
+      .reduce((sum, m) => sum + Math.abs(Number(m.amount || 0)), 0);
+  }, [accountMovements]);
+
+  const goalPercent = Math.min(100, Math.round((Number(selectedAccount?.balance || 0) / Number(goal || 1)) * 100));
+
+  async function submit(e) {
+    e.preventDefault();
+
+    try {
+      const r = await api("/api/ahorros/deposito", {
+        method: "POST",
+        body: JSON.stringify({
+          account_id: account,
+          amount,
+          description,
+        }),
+      });
+
+      showToast(r.message || "Deposito registrado correctamente");
+      setAmount("");
+      setDescription("Deposito a cuenta de ahorros");
+      await reload();
+    } catch (e) {
+      showToast(e.message);
+    }
+  }
+
+  return (
+    <>
+      <Title
+        tag="AHORROS"
+        title="Gestiona tus cuentas"
+        text="Consulta saldos, registra depositos y revisa tus movimientos en tiempo real."
+      />
+
+      <section className="savings-hero">
+        <div className="savings-main-card">
+          <div className="savings-card-top">
+            <div>
+              <span>Cuenta principal</span>
+              <h2>{selectedAccount?.account_type || "Cuenta Ahorro Digital BanBif"}</h2>
+              <p>{selectedAccount?.account_number || "Sin cuenta asignada"}</p>
+            </div>
+
+            <div className="account-status">
+              <i></i>
+              <strong>{selectedAccount?.status || "activa"}</strong>
+            </div>
+          </div>
+
+          <div className="savings-balance">
+            <span>Saldo disponible</span>
+            <strong>{money(selectedAccount?.balance)}</strong>
+            <small>Moneda: {selectedAccount?.currency || "PEN"}</small>
+          </div>
+
+          <div className="savings-meter">
+            <div className="meter-head">
+              <span>Meta de ahorro</span>
+              <b>{goalPercent}%</b>
+            </div>
+            <div className="meter-bar">
+              <em style={{ width: `${goalPercent}%` }}></em>
+            </div>
+            <p>Meta referencial: {money(goal)}</p>
+          </div>
+        </div>
+
+        <div className="savings-side">
+          <div className="saving-mini-card">
+            <span>Total abonado</span>
+            <strong>{money(totalIncome)}</strong>
+            <p>Suma de depositos registrados</p>
+          </div>
+
+          <div className="saving-mini-card">
+            <span>Egresos</span>
+            <strong>{money(totalOutcome)}</strong>
+            <p>Transferencias o salidas</p>
+          </div>
+
+          <div className="saving-mini-card">
+            <span>Movimientos</span>
+            <strong>{accountMovements.length}</strong>
+            <p>Operaciones registradas</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="split-grid savings-layout">
+        <Panel title="Deposito a cuenta">
+          <form className="form-grid premium-deposit-card" onSubmit={submit}>
+            <label>Cuenta donde se abonara el dinero</label>
+            <select value={account} onChange={(e) => setAccount(e.target.value)}>
+              {data.accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.account_number} - {money(a.balance)}
+                </option>
+              ))}
+            </select>
+
+            <label>Monto a depositar</label>
+            <input
+              type="number"
+              step="0.01"
+              min="1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Ejemplo: 100.00"
+              required
+            />
+
+            <div className="amount-chips">
+              {[50, 100, 200, 500, 1000].map((n) => (
+                <button type="button" key={n} onClick={() => setAmount(String(n))}>
+                  S/ {n}
+                </button>
+              ))}
+            </div>
+
+            <label>Concepto del deposito</label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Ejemplo: Ahorro mensual"
+              required
+            />
+
+            <label>Meta referencial</label>
+            <input
+              type="number"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder="Meta de ahorro"
+            />
+
+            <button className="primary">Depositar ahora</button>
+          </form>
+        </Panel>
+
+        <Panel title="Estado de cuenta">
+          <div className="movement-list">
+            {accountMovements.length === 0 ? (
+              <div className="empty-state">
+                <strong>Sin movimientos aun</strong>
+                <p>Cuando registres un deposito o transferencia, aparecera aqui.</p>
+              </div>
+            ) : (
+              accountMovements.slice(0, 8).map((m) => (
+                <div className="movement-row" key={m.id}>
+                  <div>
+                    <span>{m.created_at}</span>
+                    <strong>{m.description}</strong>
+                    <p>{m.operation_type}</p>
+                  </div>
+
+                  <b className={Number(m.amount) >= 0 ? "positive" : "negative"}>
+                    {Number(m.amount) >= 0 ? "+" : ""}{money(m.amount)}
+                  </b>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
+      </section>
+
+      <section className="savings-insights">
+        <div className="saving-info-card">
+          <span>01</span>
+          <strong>Cuenta conectada</strong>
+          <p>El saldo se actualiza despues de cada deposito registrado.</p>
+        </div>
+
+        <div className="saving-info-card">
+          <span>02</span>
+          <strong>Movimientos claros</strong>
+          <p>Cada operacion queda guardada como movimiento de la cuenta.</p>
+        </div>
+
+        <div className="saving-info-card">
+          <span>03</span>
+          <strong>Control financiero</strong>
+          <p>El cliente puede revisar ingresos, egresos y meta de ahorro.</p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+
+function Creditos({ data, reload, showToast }) {
+  const [sim, setSim] = useState({
+    amount: "",
+    months: "",
+    rate: "",
+  });
+
+  const [form, setForm] = useState({
+    product: "Prestamo Personal BanBif",
+    amount: "",
+    months: "",
+    monthly_income: "",
+    purpose: "",
+  });
+
+  const monthlyPayment = useMemo(() => {
+    const amount = Number(sim.amount || 0);
+    const months = Number(sim.months || 0);
+    const annualRate = Number(sim.rate || 0) / 100;
+    const monthlyRate = annualRate / 12;
+
+    if (!amount || !months || !annualRate) return 0;
+
+    return amount * (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+      (Math.pow(1 + monthlyRate, months) - 1);
+  }, [sim]);
+
+  const requestPayment = useMemo(() => {
+    const amount = Number(form.amount || 0);
+    const months = Number(form.months || 0);
+    const annualRate = Number(sim.rate || 21) / 100;
+    const monthlyRate = annualRate / 12;
+
+    if (!amount || !months) return 0;
+
+    return amount * (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+      (Math.pow(1 + monthlyRate, months) - 1);
+  }, [form.amount, form.months, sim.rate]);
+
+  const capacity = useMemo(() => {
+    const income = Number(form.monthly_income || 0);
+    if (!income || !requestPayment) return 0;
+    return Math.round((requestPayment / income) * 100);
+  }, [form.monthly_income, requestPayment]);
+
+  const capacityText =
+    !capacity ? "Pendiente" :
+    capacity <= 30 ? "Capacidad adecuada" :
+    capacity <= 45 ? "Requiere evaluacion" :
+    "Riesgo alto";
+
+  const capacityClass =
+    !capacity ? "pending" :
+    capacity <= 30 ? "good" :
+    capacity <= 45 ? "warning" :
+    "risk";
+
+  const lastCredit = data?.credits?.[0];
+  const creditApplications = Array.isArray(data?.credits) ? data.credits : [];
+
+  function updateForm(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  function useSimulation() {
+    if (!sim.amount || !sim.months) {
+      showToast("Completa monto y plazo para aplicar la simulacion");
+      return;
+    }
+
+    setForm((f) => ({
+      ...f,
+      amount: String(sim.amount || ""),
+      months: String(sim.months || ""),
+    }));
+
+    showToast("Simulacion aplicada a la solicitud");
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+
+    try {
+      const r = await api("/api/creditos/solicitar", {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+
+      showToast(r.message || "Solicitud de credito enviada");
+      setForm({
+        product: "Prestamo Personal BanBif",
+        amount: "",
+        months: "",
+        monthly_income: "",
+        purpose: "",
+      });
+
+      await reload();
+    } catch (e) {
+      showToast(e.message || "Error al enviar solicitud");
+    }
+  }
+
+  return (
+    <>
+      <Title
+        tag="CREDITOS"
+        title="Solicita y simula tu credito"
+        text="Calcula una cuota referencial, registra tu solicitud y revisa el estado de evaluacion."
+      />
+
+      <section className="credit-summary-grid">
+        <div className="credit-hero-card">
+          <span>Credito personal</span>
+          <h2>Evalua tu prestamo antes de solicitarlo</h2>
+          <p>
+            Simula el monto, plazo y tasa para conocer una cuota mensual aproximada
+            antes de enviar tu solicitud.
+          </p>
+
+          <div className="credit-hero-data">
+            <div>
+              <small>Cuota estimada</small>
+              <strong>{monthlyPayment ? money(monthlyPayment) : "Completa datos"}</strong>
+            </div>
+            <div>
+              <small>Plazo</small>
+              <strong>{sim.months ? `${sim.months} meses` : "Por definir"}</strong>
+            </div>
+            <div>
+              <small>Tasa referencial</small>
+              <strong>{sim.rate ? `${sim.rate}%` : "Por definir"}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="credit-mini-card">
+          <span>Solicitudes</span>
+          <strong>{data?.credits?.length || 0}</strong>
+          <p>Registradas en el sistema</p>
+        </div>
+
+        <div className="credit-mini-card">
+          <span>Estado actual</span>
+          <strong>{lastCredit?.status || "Sin solicitud"}</strong>
+          <p>{lastCredit ? "Ultima solicitud registrada" : "Aun no hay evaluacion"}</p>
+        </div>
+      </section>
+
+      <section className="split-grid credit-layout">
+        <Panel title="Simulador de credito">
+          <div className="form-grid credit-form">
+            <label>Monto del prestamo</label>
+            <input
+              type="number"
+              min="500"
+              value={sim.amount}
+              onChange={(e) => setSim({ ...sim, amount: e.target.value })}
+              placeholder="Ejemplo: 10000"
+            />
+
+            <div className="credit-chip-row">
+              {[3000, 5000, 8000, 10000, 15000].map((n) => (
+                <button type="button" key={n} onClick={() => setSim({ ...sim, amount: String(n) })}>
+                  S/ {n}
+                </button>
+              ))}
+            </div>
+
+            <label>Plazo en meses</label>
+            <input
+              type="number"
+              min="3"
+              max="60"
+              value={sim.months}
+              onChange={(e) => setSim({ ...sim, months: e.target.value })}
+              placeholder="Ejemplo: 12"
+            />
+
+            <label>Tasa referencial anual (%)</label>
+            <input
+              type="number"
+              min="1"
+              max="80"
+              value={sim.rate}
+              onChange={(e) => setSim({ ...sim, rate: e.target.value })}
+              placeholder="Ejemplo: 21"
+            />
+
+            <div className="credit-result">
+              <span>Cuota mensual estimada</span>
+              <strong>{monthlyPayment ? money(monthlyPayment) : "Completa monto, plazo y tasa"}</strong>
+              <p>Calculo referencial sujeto a evaluacion crediticia.</p>
+            </div>
+
+            <button type="button" className="soft-action" onClick={useSimulation}>
+              Aplicar simulacion a mi solicitud
+            </button>
+          </div>
+        </Panel>
+
+        <Panel title="Nueva solicitud">
+          <form className="form-grid credit-form" onSubmit={submit}>
+            <label>Producto</label>
+            <select value={form.product} onChange={(e) => updateForm("product", e.target.value)}>
+              <option>Prestamo Personal BanBif</option>
+              <option>Credito de estudios</option>
+              <option>Credito para emprendimiento</option>
+              <option>Credito de libre disponibilidad</option>
+            </select>
+
+            <label>Monto solicitado</label>
+            <input
+              required
+              type="number"
+              min="500"
+              value={form.amount}
+              onChange={(e) => updateForm("amount", e.target.value)}
+              placeholder="Ejemplo: 10000"
+            />
+
+            <label>Plazo en meses</label>
+            <input
+              required
+              type="number"
+              min="3"
+              max="60"
+              value={form.months}
+              onChange={(e) => updateForm("months", e.target.value)}
+              placeholder="Ejemplo: 12"
+            />
+
+            <label>Ingreso mensual</label>
+            <input
+              required
+              type="number"
+              min="1"
+              value={form.monthly_income}
+              onChange={(e) => updateForm("monthly_income", e.target.value)}
+              placeholder="Ejemplo: 2500"
+            />
+
+            <label>Finalidad del credito</label>
+            <input
+              required
+              value={form.purpose}
+              onChange={(e) => updateForm("purpose", e.target.value)}
+              placeholder="Ejemplo: estudios, negocio, compra personal"
+            />
+
+            <div className={`credit-evaluation ${capacityClass}`}>
+              <span>Evaluacion referencial</span>
+              <strong>{capacityText}</strong>
+              <p>
+                Cuota estimada: {requestPayment ? money(requestPayment) : "Pendiente"} - Compromiso aprox.: {capacity || 0}% del ingreso
+              </p>
+            </div>
+
+            <button className="primary">Enviar solicitud</button>
+          </form>
+        </Panel>
+      </section>
+      <Panel title="Estado de solicitudes de credito">
+        <p className="credit-section-note">
+          Aqui puedes revisar como se encuentra cada solicitud registrada. La evaluacion y respuesta final dependen del banco.
+        </p>
+
+        <div className="credit-request-list compact-credit-requests">
+          {creditApplications.length === 0 ? (
+            <div className="empty-state">
+              <strong>No tienes solicitudes registradas</strong>
+              <p>Cuando envies una solicitud de credito, aparecera en esta seccion.</p>
+            </div>
+          ) : (
+            creditApplications.map((c) => {
+              const info = loanStatusInfo(c.status, c.analyst_comment);
+              const step = loanStatusStep(c.status);
+              const steps = ["Recibida", "En evaluacion", "Decision", "Desembolso"];
+
+              return (
+                <div className="credit-request-card" key={c.id}>
+                  <div className="credit-request-main">
+                    <span>{c.product}</span>
+                    <strong>{money(c.amount)} - {c.months} meses</strong>
+                    <p>Finalidad: {c.purpose || "No especificada"}</p>
+                    <small>Ingreso declarado: {money(c.monthly_income)}</small>
+                  </div>
+
+                  <div className="credit-status compact">
+                    <b className={`credit-status-pill ${info.className}`}>{info.label}</b>
+                    <p>{info.text}</p>
+
+                    <div className="credit-mini-timeline">
+                      {steps.map((item, index) => (
+                        <div
+                          key={item}
+                          className={`credit-mini-step ${index + 1 <= step ? "done" : ""} ${index + 1 === step ? "current" : ""} ${info.className === "rejected" && index === 2 ? "rejected" : ""}`}
+                        >
+                          <i>{index + 1}</i>
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+
+
+
+function loanStatusInfo(status, analystComment = "") {
+  const value = String(status || "").toLowerCase();
+  const rawComment = String(analystComment || "").trim();
+  const invalidComment =
+    rawComment.toLowerCase().includes("react") ||
+    rawComment.toLowerCase().includes("core bancario");
+
+  const cleanComment = rawComment && !invalidComment ? rawComment : "";
+
+  if (value === "en evaluacion") {
+    return {
+      label: "En evaluacion",
+      className: "review",
+      text: cleanComment || "Tu solicitud esta siendo revisada por el area de creditos."
+    };
+  }
+
+  if (value === "aprobado") {
+    return {
+      label: "Aprobada",
+      className: "approved",
+      text: cleanComment || "Tu solicitud fue aprobada. El banco continuara con los siguientes pasos."
+    };
+  }
+
+  if (value === "desembolsado") {
+    return {
+      label: "Desembolsada",
+      className: "paid",
+      text: cleanComment || "El credito fue desembolsado correctamente."
+    };
+  }
+
+  if (value === "rechazado") {
+    return {
+      label: "No aprobada",
+      className: "rejected",
+      text: cleanComment || "La solicitud no fue aprobada segun la evaluacion del banco."
+    };
+  }
+
+  return {
+    label: "Recibida",
+    className: "sent",
+    text: cleanComment || "Tu solicitud fue registrada correctamente y esta pendiente de evaluacion."
+  };
+}
+
+
+function loanStatusStep(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "en evaluacion") return 2;
+  if (value === "aprobado" || value === "rechazado") return 3;
+  if (value === "desembolsado") return 4;
+
+  return 1;
+}
+
+
+function Transferencias({ data, reload, showToast }) {
+  const accounts = data?.accounts || [];
+  const [form, setForm] = useState({
+    origin_account_id: accounts?.[0]?.id || "",
+    destination_account_number: "",
+    amount: "",
+    description: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [localMessage, setLocalMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+
+  function update(k, v) {
+    setForm((f) => ({ ...f, [k]: v }));
+    setLocalMessage("");
+    setMessageType("");
+  }
+
+  useEffect(() => {
+    if (!form.origin_account_id && accounts?.[0]?.id) {
+      setForm((f) => ({ ...f, origin_account_id: accounts[0].id }));
+    }
+  }, [accounts, form.origin_account_id]);
+
+  const selectedAccount = useMemo(() => {
+    return accounts.find((a) => String(a.id) === String(form.origin_account_id)) || accounts[0];
+  }, [accounts, form.origin_account_id]);
+
+  const amountValue = useMemo(() => {
+    const clean = String(form.amount || "").replace(",", ".");
+    const value = Number(clean);
+    return Number.isFinite(value) ? value : 0;
+  }, [form.amount]);
+
+  const destinationClean = form.destination_account_number.trim().toUpperCase();
+  const originNumber = selectedAccount?.account_number || "";
+  const sameAccount = destinationClean && destinationClean === originNumber.toUpperCase();
+  const enoughBalance = selectedAccount && amountValue > 0 && amountValue <= Number(selectedAccount.balance || 0);
+  const remainingBalance = selectedAccount ? Number(selectedAccount.balance || 0) - amountValue : 0;
+  const canSubmit = Boolean(selectedAccount && destinationClean && amountValue > 0 && enoughBalance && !sameAccount && !busy);
+
+  const previewText = useMemo(() => {
+    if (!selectedAccount) return "No hay cuenta origen activa para operar.";
+    if (!destinationClean) return "Ingresa una cuenta destino valida y registrada.";
+    if (sameAccount) return "La cuenta destino no puede ser igual a la cuenta origen.";
+    if (!amountValue || amountValue <= 0) return "Ingresa un monto mayor a S/ 0.00.";
+    if (!enoughBalance) return "El monto supera el saldo disponible de la cuenta origen.";
+    return `Saldo despues de operar: ${money(remainingBalance)}`;
+  }, [selectedAccount, destinationClean, sameAccount, amountValue, enoughBalance, remainingBalance]);
+
+  const transferMovements = useMemo(() => {
+    return (data?.movements || [])
+      .filter((m) => String(m.operation_type || "").includes("transferencia"))
+      .slice(0, 4);
+  }, [data]);
+
+  async function submit(e) {
+    e.preventDefault();
+
+    if (!selectedAccount) {
+      setMessageType("warning");
+      setLocalMessage("No hay una cuenta origen disponible.");
+      return;
+    }
+
+    if (sameAccount) {
+      setMessageType("warning");
+      setLocalMessage("No puedes transferir a la misma cuenta de origen.");
+      return;
+    }
+
+    if (!canSubmit) {
+      setMessageType("warning");
+      setLocalMessage(previewText);
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      const r = await api("/api/transferencias", {
+        method: "POST",
+        body: JSON.stringify({
+          origin_account_id: selectedAccount.id,
+          destination_account_number: destinationClean,
+          amount: amountValue.toFixed(2),
+          description: form.description.trim() || "Transferencia desde banca digital",
+        }),
+      });
+
+      showToast(r.message || "Transferencia realizada correctamente");
+      setMessageType("success");
+      setLocalMessage("Transferencia realizada correctamente y registrada en tus movimientos.");
+      setForm((f) => ({
+        ...f,
+        destination_account_number: "",
+        amount: "",
+        description: "",
+      }));
+      await reload();
+    } catch (e) {
+      setMessageType("warning");
+      setLocalMessage(e.message || "No se pudo completar la transferencia.");
+      showToast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Title
+        tag="TRANSFERENCIAS"
+        title="Transfiere de forma segura"
+        text="Valida saldo, cuenta destino y registro de movimientos de forma segura."
+      />
+
+      <section className="split-grid transfer-layout">
+        <Panel title="Nueva transferencia">
+          <div className="transfer-summary">
+            <div className="transfer-balance-card">
+              <span>Cuenta origen</span>
+              <strong>{selectedAccount?.account_number || "Sin cuenta"}</strong>
+              <p>{selectedAccount?.account_type || "Cuenta no disponible"}</p>
+            </div>
+
+            <div className="transfer-balance-card accent">
+              <span>Saldo disponible</span>
+              <strong>{money(selectedAccount?.balance)}</strong>
+              <p>Moneda: {selectedAccount?.currency || "PEN"}</p>
+            </div>
+          </div>
+
+          <form className="form-grid transfer-form" onSubmit={submit}>
+            <label>Cuenta origen</label>
+            <select value={form.origin_account_id} onChange={(e) => update("origin_account_id", e.target.value)}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>{a.account_number} - {money(a.balance)}</option>
+              ))}
+            </select>
+
+            <label>Cuenta destino</label>
+            <input
+              value={form.destination_account_number}
+              onChange={(e) => update("destination_account_number", e.target.value.toUpperCase())}
+              placeholder="Ejemplo: BBF-1234-567890"
+              autoComplete="off"
+              required
+            />
+
+            <label>Monto</label>
+            <input
+              type="number"
+              step="0.01"
+              min="1"
+              max={selectedAccount?.balance || undefined}
+              value={form.amount}
+              onChange={(e) => update("amount", e.target.value)}
+              placeholder="Ejemplo: 150.00"
+              required
+            />
+
+            <div className="amount-chips transfer-chips">
+              {[50, 100, 200, 500, 1000].map((n) => (
+                <button type="button" key={n} onClick={() => update("amount", String(n))}>
+                  S/ {n}
+                </button>
+              ))}
+            </div>
+
+            <label>Descripcion</label>
+            <input
+              value={form.description}
+              onChange={(e) => update("description", e.target.value)}
+              placeholder="Ejemplo: pago de servicio o apoyo familiar"
+            />
+
+            <div className={`transfer-preview ${canSubmit ? "ok" : "warning"}`}>
+              <span>Revision antes de enviar</span>
+              <strong>{amountValue > 0 ? money(amountValue) : "Monto pendiente"}</strong>
+              <p>{previewText}</p>
+            </div>
+
+            {localMessage && (
+              <div className={`inline-feedback ${messageType || "warning"}`}>
+                {localMessage}
+              </div>
+            )}
+
+            <button className="primary" disabled={!canSubmit}>
+              {busy ? "Procesando..." : "Transferir ahora"}
+            </button>
+          </form>
+        </Panel>
+
+        <Panel title="Verificacion de seguridad">
+          <div className="security-panel-inner">
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Validacion de saldo</strong>
+                <p>El sistema valida montos invalidos y evita que la cuenta quede negativa.</p>
+              </div>
+            </div>
+
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Regla de cuenta</strong>
+                <p>No se permite transferir a la misma cuenta origen.</p>
+              </div>
+            </div>
+
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Registro de operacion</strong>
+                <p>La operacion se registra en la cuenta origen y destino.</p>
+              </div>
+            </div>
+
+            <div className="core-flow">
+              <div><span>Debito</span><b>{originNumber || "Origen"}</b></div>
+              <em>â†’</em>
+              <div><span>Sistema</span><b>Validacion</b></div>
+              <em>â†’</em>
+              <div><span>Abono</span><b>{destinationClean || "Destino"}</b></div>
+            </div>
+
+            <h3 className="transfer-movements-title">Ultimas transferencias</h3>
+            <div className="movement-mini-list">
+              {transferMovements.length ? (
+                transferMovements.map((m) => (
+                  <Line key={m.id} title={m.description} text={m.created_at} value={money(m.amount)} />
+                ))
+              ) : (
+                <div className="empty-mini">Aun no hay transferencias registradas.</div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      </section>
+    </>
+  );
+}
+
+function Perfil({ user }) {
+  const safe = (value, fallback = "No registrado") => value ? value : fallback;
+
+  const fullName = safe(user?.full_name, "Cliente BanBif");
+  const initial = fullName.trim().charAt(0).toUpperCase() || "B";
+  const document = safe(user?.document);
+  const maskedDocument = document !== "No registrado" ? `DNI terminado en ${String(document).slice(-4)}` : "Documento pendiente";
+  const email = safe(user?.email);
+  const phone = safe(user?.phone);
+  const address = safe(user?.address);
+
+  const completedFields = [user?.full_name, user?.document, user?.email, user?.phone, user?.address].filter(Boolean).length;
+  const profilePercent = Math.round((completedFields / 5) * 100);
+
+  return (
+    <>
+      <Title
+        tag="PERFIL"
+        title="Mi perfil digital"
+        text="Consulta tu informacion personal, estado de cliente y datos de contacto."
+      />
+
+      <section className="profile-hero-grid">
+        <div className="profile-card profile-main-card">
+          <div className="profile-avatar">{initial}</div>
+          <h2>{fullName}</h2>
+          <p>Cliente BanBif Digital</p>
+
+          <div className="profile-tags">
+            <span>Sesion activa</span>
+            <span>Cuenta verificada</span>
+            <span>Perfil digital</span>
+          </div>
+        </div>
+
+        <div className="profile-card profile-status-card">
+          <div className="profile-status-head">
+            <div>
+              <span>Estado del perfil</span>
+              <strong>{profilePercent}% completo</strong>
+            </div>
+            <p>Tu informacion principal esta registrada correctamente para operar en la banca digital.</p>
+          </div>
+
+          <div className="profile-progress">
+            <div style={{ width: `${profilePercent}%` }}></div>
+          </div>
+
+          <div className="profile-kpi-grid">
+            <div>
+              <span>Documento</span>
+              <strong>{maskedDocument}</strong>
+            </div>
+            <div>
+              <span>Tipo de cliente</span>
+              <strong>Cliente digital</strong>
+            </div>
+            <div>
+              <span>Seguridad</span>
+              <strong>Activa</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="split-grid profile-detail-grid">
+        <Panel title="Datos personales">
+          <p className="panel-note">
+            Estos datos permiten identificar al cliente y mantener actualizada la informacion de contacto.
+          </p>
+
+          <div className="profile-data-list">
+            <div className="profile-data-row">
+              <span>Nombre completo</span>
+              <strong>{fullName}</strong>
+            </div>
+            <div className="profile-data-row">
+              <span>DNI</span>
+              <strong>{document}</strong>
+            </div>
+            <div className="profile-data-row">
+              <span>Correo electronico</span>
+              <strong>{email}</strong>
+            </div>
+            <div className="profile-data-row">
+              <span>Telefono</span>
+              <strong>{phone}</strong>
+            </div>
+            <div className="profile-data-row">
+              <span>Direccion</span>
+              <strong>{address}</strong>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Resumen de seguridad">
+          <div className="security-panel-inner">
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Acceso protegido</strong>
+                <p>Tu cuenta utiliza credenciales de ingreso activas.</p>
+              </div>
+            </div>
+
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Datos registrados</strong>
+                <p>Tu informacion personal se encuentra disponible en el sistema.</p>
+              </div>
+            </div>
+
+            <div className="security-row">
+              <i>âœ“</i>
+              <div>
+                <strong>Operaciones habilitadas</strong>
+                <p>Puedes operar con ahorros, creditos y transferencias.</p>
+              </div>
+            </div>
+
+            <div className="profile-advice">
+              <strong>Consejo de seguridad</strong>
+              <p>No compartas tu clave y cierra sesion al terminar tus operaciones.</p>
+            </div>
+          </div>
+        </Panel>
+      </section>
+    </>
+  );
+}
+
+function Core({ core }) {
+  const [filter, setFilter] = useState("");
+
+  if (!core) return <Panel title="Cargando solicitudes..." />;
+
+  const allCredits = Array.isArray(core?.credits) ? core.credits : [];
+
+  const credits = allCredits.filter((c) =>
+    JSON.stringify(c).toLowerCase().includes(filter.toLowerCase())
+  );
+
+  const totalRequested = allCredits.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const inReview = allCredits.filter((c) =>
+    ["enviado", "en evaluacion"].includes(String(c.status || "").toLowerCase())
+  ).length;
+  const approvedAmount = allCredits
+    .filter((c) => ["aprobado", "desembolsado"].includes(String(c.status || "").toLowerCase()))
+    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+  return (
+    <>
+      <Title
+        tag="SOLICITUDES"
+        title="Seguimiento de solicitudes"
+        text="Consulta el avance de tus creditos y revisa el estado de evaluacion registrado por el banco."
+      />
+
+      <section className="stats-grid request-stats">
+        <Card title="Monto solicitado" value={money(totalRequested)} />
+        <Card title="En revision" value={inReview} />
+        <Card title="Monto aprobado" value={money(approvedAmount)} />
+      </section>
+
+      <Panel title="Mis solicitudes de credito">
+        <div className="request-toolbar">
+          <input
+            className="filter-input"
+            placeholder="Buscar por producto, estado o comentario..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          <span>{credits.length} resultado(s)</span>
+        </div>
+
+        <div className="request-list">
+          {credits.length ? (
+            credits.map((c) => <CoreRow key={c.id} credit={c} />)
+          ) : (
+            <div className="empty-request">
+              No se encontraron solicitudes con ese filtro.
+            </div>
+          )}
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+function CoreRow({ credit }) {
+  const info = creditStatusInfo(credit.status);
+  const step = creditStep(credit.status);
+  const isRejected = String(credit.status || "").toLowerCase() === "rechazado";
+  const comment = credit.analyst_comment?.trim()
+    ? credit.analyst_comment
+    : info.comment;
+
+  const timeline = ["Enviada", "En evaluacion", "Decision", "Desembolso"];
+
+  return (
+    <article className="request-card">
+      <div className="request-card-head">
+        <div>
+          <span>Solicitud #{credit.id}</span>
+          <h3>{credit.product}</h3>
+        </div>
+        <b className={`status-badge ${info.className}`}>{info.label}</b>
+      </div>
+
+      <div className="request-meta">
+        <div>
+          <span>Monto solicitado</span>
+          <strong>{money(credit.amount)}</strong>
+        </div>
+        <div>
+          <span>Estado actual</span>
+          <strong>{info.label}</strong>
+        </div>
+      </div>
+
+      <div className="request-comment">
+        <span>Comentario del banco</span>
+        <p>{comment}</p>
+      </div>
+
+      <div className="request-timeline">
+        {timeline.map((item, index) => (
+          <div
+            key={item}
+            className={`timeline-item ${index + 1 <= step ? "done" : ""} ${index + 1 === step ? "current" : ""} ${isRejected && index === 2 ? "rejected" : ""}`}
+          >
+            <i>{index + 1}</i>
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function creditStatusInfo(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "en evaluacion") {
+    return {
+      label: "En evaluacion",
+      className: "review",
+      comment: "Tu solicitud esta siendo revisada por el area correspondiente."
+    };
+  }
+
+  if (value === "aprobado") {
+    return {
+      label: "Aprobada",
+      className: "approved",
+      comment: "Tu solicitud fue aprobada. El banco continuara con el proceso de desembolso."
+    };
+  }
+
+  if (value === "desembolsado") {
+    return {
+      label: "Desembolsada",
+      className: "paid",
+      comment: "El credito fue desembolsado correctamente."
+    };
+  }
+
+  if (value === "rechazado") {
+    return {
+      label: "No aprobada",
+      className: "rejected",
+      comment: "La solicitud no fue aprobada segun la evaluacion del banco."
+    };
+  }
+
+  return {
+    label: "Enviada",
+    className: "sent",
+    comment: "Tu solicitud fue recibida y esta pendiente de evaluacion."
+  };
+}
+
+function creditStep(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "en evaluacion") return 2;
+  if (value === "aprobado" || value === "rechazado") return 3;
+  if (value === "desembolsado") return 4;
+
+  return 1;
+}
+
+function Brand({ subtitle }) {
+  return (
+    <div className="brand">
+      <div className="logo">B</div>
+      <div>
+        <strong>BanBif</strong>
+        <span>{subtitle}</span>
+      </div>
+    </div>
+  );
+}
+
+function Card({ title, value, text }) {
+  return (
+    <div className="small-card">
+      <span>{title}</span>
+      <strong>{value}</strong>
+      {text && <p>{text}</p>}
+    </div>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <section className="panel">
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Title({ tag, title, text }) {
+  return (
+    <section className="page-title">
+      <span>{tag}</span>
+      <h1>{title}</h1>
+      <p>{text}</p>
+    </section>
+  );
+}
+
+function Line({ title, text, value }) {
+  return (
+    <div className="line-item">
+      <div>
+        <strong>{title}</strong>
+        <p>{text}</p>
+      </div>
+      <b>{value}</b>
+    </div>
+  );
+}
+
+function Table({ headers, rows }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>{headers.map((h) => <th key={h}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Toast({ text }) {
+  const isSuccess = text && (
+    text.toLowerCase().includes("exito") ||
+    text.toLowerCase().includes("iniciada") ||
+    text.toLowerCase().includes("correctamente")
+  );
+
+  return (
+    <div className={text ? `toast show ${isSuccess ? "success" : ""}` : "toast"}>
+      <span className="toast-mark">{isSuccess ? "âœ“" : "!"}</span>
+      <strong>{text}</strong>
+    </div>
+  );
+}
+
+
+

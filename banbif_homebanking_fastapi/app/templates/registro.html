@@ -1,0 +1,115 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<div class="screen-loader" id="screenLoader">
+    <div class="loader-logo">B</div>
+    <p>Preparando registro...</p>
+</div>
+
+<section class="register-premium">
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <div class="orb orb-one"></div>
+    <div class="orb orb-two"></div>
+    <div class="orb orb-three"></div>
+
+    <div class="register-info">
+        <div class="neo-brand">
+            <div class="neo-logo">B</div>
+            <div>
+                <strong>BanBif</strong>
+                <span>Registro Digital</span>
+            </div>
+        </div>
+
+        <div class="register-copy">
+            <span class="neo-chip">NUEVO CLIENTE</span>
+            <h1>Crea tu acceso digital en segundos</h1>
+            <p>
+                Registra tus datos para ingresar al Home Banking y acceder a tus modulos:
+                ahorros, creditos, transferencias, perfil y core bancario.
+            </p>
+        </div>
+
+        <div class="register-steps">
+            <div class="step-card active">
+                <span>01</span>
+                <strong>Datos personales</strong>
+                <p>DNI y nombre completo</p>
+            </div>
+            <div class="step-card">
+                <span>02</span>
+                <strong>Contacto</strong>
+                <p>Correo electronico</p>
+            </div>
+            <div class="step-card">
+                <span>03</span>
+                <strong>Seguridad</strong>
+                <p>Clave de acceso</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="register-form-zone">
+        <div class="register-card ultra-card tilt-card">
+            <div class="card-shine"></div>
+
+            <div class="login-head">
+                <div class="neo-logo small">B</div>
+                <div>
+                    <h2>Crear cuenta</h2>
+                    <p>Completa el formulario para registrarte</p>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="alert">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/registro">
+                <div class="input-floating">
+                    <input type="text" name="document" required>
+                    <label>DNI</label>
+                </div>
+
+                <div class="input-floating">
+                    <input type="text" name="full_name" required>
+                    <label>Nombre completo</label>
+                </div>
+
+                <div class="input-floating">
+                    <input type="email" name="email" required>
+                    <label>Correo electronico</label>
+                </div>
+
+                <div class="input-floating password-floating">
+                    <input type="password" name="password" id="registerPassword" required>
+                    <label>Contrasena</label>
+                    <button type="button" id="toggleRegisterPassword">Ver</button>
+                </div>
+
+                <div class="strength-box">
+                    <div class="strength-info">
+                        <span>Seguridad de clave</span>
+                        <strong id="strengthText">Pendiente</strong>
+                    </div>
+                    <div class="strength-track">
+                        <div id="strengthBar"></div>
+                    </div>
+                </div>
+
+                <label class="check-modern">
+                    <input type="checkbox" required>
+                    <span>Acepto registrar mis datos para el proyecto academico.</span>
+                </label>
+
+                <button type="submit" class="primary-btn full-btn magnetic">Crear mi cuenta</button>
+            </form>
+
+            <div class="login-extra">
+                <a href="/login">Ya tengo cuenta</a>
+                <span>BanBif Home Banking</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

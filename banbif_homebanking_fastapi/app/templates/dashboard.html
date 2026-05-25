@@ -1,0 +1,134 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="welcome-hero reveal">
+    <div>
+        <span class="chip light">RESUMEN DIGITAL</span>
+        <h1>Hola, {{ user.full_name.split()[0] }}</h1>
+        <p>Bienvenido a tu banca digital BanBif. Revisa tus productos, movimientos y operaciones desde este panel interactivo.</p>
+
+        <div class="hero-actions">
+            <a href="/transferencias" class="primary-btn">Nueva transferencia</a>
+            <a href="/creditos" class="secondary-btn">Solicitar credito</a>
+        </div>
+    </div>
+
+    <div class="bank-card">
+        <div class="card-glow"></div>
+        <div class="bank-card-top">
+            <span>BanBif Digital</span>
+            <strong>VISA</strong>
+        </div>
+        <div class="card-number">**** **** **** 9685</div>
+        <div class="bank-card-bottom">
+            <div>
+                <small>Titular</small>
+                <b>{{ user.full_name }}</b>
+            </div>
+            <div>
+                <small>Saldo</small>
+                <b>S/ {{ "%.2f"|format(total_balance) }}</b>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="stat-grid reveal">
+    <div class="stat-card gradient-card">
+        <span>Saldo total</span>
+        <strong class="counter" data-target="{{ total_balance }}">0</strong>
+        <small>Soles disponibles</small>
+    </div>
+
+    <div class="stat-card">
+        <span>Productos activos</span>
+        <strong class="counter" data-target="{{ accounts|length }}">0</strong>
+        <small>Cuentas registradas</small>
+    </div>
+
+    <div class="stat-card">
+        <span>Creditos</span>
+        <strong class="counter" data-target="{{ credits|length }}">0</strong>
+        <small>Solicitudes creadas</small>
+    </div>
+</section>
+
+<section class="interactive-section reveal">
+    <div class="section-head">
+        <div>
+            <span class="chip">ACCESOS RAPIDOS</span>
+            <h2>Que deseas hacer hoy?</h2>
+        </div>
+    </div>
+
+    <div class="action-grid">
+        <a class="action-card" href="/ahorros">
+            <div class="action-icon">💰</div>
+            <strong>Ahorros</strong>
+            <p>Consulta saldo, depositos y estado de cuenta.</p>
+        </a>
+
+        <a class="action-card" href="/creditos">
+            <div class="action-icon">📄</div>
+            <strong>Creditos</strong>
+            <p>Simula cuotas y envia solicitudes.</p>
+        </a>
+
+        <a class="action-card" href="/transferencias">
+            <div class="action-icon">↗</div>
+            <strong>Transferencias</strong>
+            <p>Realiza operaciones entre cuentas.</p>
+        </a>
+
+        <a class="action-card" href="/core">
+            <div class="action-icon">🏦</div>
+            <strong>Core Bancario</strong>
+            <p>Gestion interna de creditos y cuentas.</p>
+        </a>
+    </div>
+</section>
+
+<section class="two-columns reveal">
+    <div class="panel">
+        <div class="section-head">
+            <div>
+                <span class="chip">CUENTAS</span>
+                <h2>Mis productos</h2>
+            </div>
+        </div>
+
+        <div class="account-list">
+            {% for account in accounts %}
+            <div class="account-line hover-line">
+                <div>
+                    <strong>{{ account.account_type }}</strong>
+                    <p>{{ account.account_number }}</p>
+                </div>
+                <div class="money-text">S/ {{ "%.2f"|format(account.balance) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="section-head">
+            <div>
+                <span class="chip">MOVIMIENTOS</span>
+                <h2>Actividad reciente</h2>
+            </div>
+        </div>
+
+        <div class="movement-list">
+            {% for m in movements %}
+            <div class="movement-item">
+                <div class="movement-dot"></div>
+                <div>
+                    <strong>{{ m.description }}</strong>
+                    <p>{{ m.created_at.strftime("%d/%m/%Y") }} - {{ m.operation_type }}</p>
+                </div>
+                <span>S/ {{ "%.2f"|format(m.amount) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

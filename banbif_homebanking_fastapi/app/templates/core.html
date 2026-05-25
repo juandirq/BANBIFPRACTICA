@@ -1,0 +1,102 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-title reveal">
+    <span class="chip">CORE BANCARIO</span>
+    <h1>Gestion interna del banco</h1>
+    <p>Administra evaluaciones de credito, estados y cuentas vinculadas al Home Banking.</p>
+</section>
+
+<section class="stat-grid reveal">
+    <div class="stat-card gradient-card">
+        <span>Cartera activa</span>
+        <strong>S/ {{ "%.2f"|format(active_portfolio) }}</strong>
+        <small>Total de saldos en cuentas</small>
+    </div>
+
+    <div class="stat-card">
+        <span>Creditos aprobados</span>
+        <strong>S/ {{ "%.2f"|format(total_approved) }}</strong>
+        <small>Monto aprobado o desembolsado</small>
+    </div>
+
+    <div class="stat-card">
+        <span>Solicitudes</span>
+        <strong>{{ credits|length }}</strong>
+        <small>Bandeja de evaluacion</small>
+    </div>
+</section>
+
+<section class="panel reveal">
+    <div class="section-head">
+        <div>
+            <span class="chip">APROBACION</span>
+            <h2>Bandeja de solicitudes</h2>
+        </div>
+        <input class="table-filter" id="movementFilter" placeholder="Filtrar solicitudes...">
+    </div>
+
+    <div class="table-wrap">
+        <table id="movementTable">
+            <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Producto</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Actualizar</th>
+            </tr>
+            {% for c in credits %}
+            <tr>
+                <td>{{ c.id }}</td>
+                <td>{{ c.user_id }}</td>
+                <td>{{ c.product }}</td>
+                <td>S/ {{ "%.2f"|format(c.amount) }}</td>
+                <td><span class="status-pill">{{ c.status }}</span></td>
+                <td>
+                    <form method="post" action="/core/creditos/estado" class="mini-form">
+                        <input type="hidden" name="credit_id" value="{{ c.id }}">
+                        <select name="status">
+                            <option value="enviado">enviado</option>
+                            <option value="en evaluacion">en evaluacion</option>
+                            <option value="aprobado">aprobado</option>
+                            <option value="rechazado">rechazado</option>
+                            <option value="desembolsado">desembolsado</option>
+                        </select>
+                        <input type="text" name="comment" placeholder="Comentario" required>
+                        <button type="submit" class="primary-btn small-btn">Guardar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+
+<section class="panel reveal">
+    <div class="section-head">
+        <div>
+            <span class="chip">CUENTAS</span>
+            <h2>Gestion de cuentas</h2>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <tr>
+                <th>Cuenta</th>
+                <th>Tipo</th>
+                <th>Saldo</th>
+                <th>Estado</th>
+            </tr>
+            {% for a in accounts %}
+            <tr>
+                <td>{{ a.account_number }}</td>
+                <td>{{ a.account_type }}</td>
+                <td>S/ {{ "%.2f"|format(a.balance) }}</td>
+                <td><span class="status ok">{{ a.status }}</span></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+{% endblock %}

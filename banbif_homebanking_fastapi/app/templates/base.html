@@ -1,0 +1,73 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "BanBif Home Banking" }}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    {% if user %}
+    <aside class="sidebar" id="sidebar">
+        <div class="side-brand">
+            <div class="brand-mark">B</div>
+            <div>
+                <strong>BanBif</strong>
+                <span>Home Banking</span>
+            </div>
+        </div>
+
+        <nav class="side-nav">
+            <a href="/dashboard" class="nav-item">Inicio</a>
+            <a href="/ahorros" class="nav-item">Ahorros</a>
+            <a href="/creditos" class="nav-item">Creditos</a>
+            <a href="/transferencias" class="nav-item">Transferencias</a>
+            <a href="/perfil" class="nav-item">Perfil</a>
+            <a href="/core" class="nav-item">Core Bancario</a>
+        </nav>
+
+        <div class="side-card">
+            <span>Cliente digital</span>
+            <strong>{{ user.full_name.split()[0] }}</strong>
+            <p>Gestiona tus productos desde una plataforma moderna.</p>
+        </div>
+
+        <a href="/logout" class="logout-side">Cerrar sesion</a>
+    </aside>
+
+    <div class="mobile-overlay" id="overlay"></div>
+
+    <header class="top-header">
+        <button class="icon-btn" id="menuBtn">☰</button>
+
+        <div class="top-search">
+            <span>⌕</span>
+            <input type="text" id="globalSearch" placeholder="Buscar modulo: ahorros, creditos, transferencias...">
+        </div>
+
+        <div class="top-actions">
+            <button class="icon-btn" id="themeBtn">◐</button>
+            <button class="notify-btn" id="notifyBtn">
+                🔔
+                <span></span>
+            </button>
+            <div class="user-pill">
+                <div class="avatar">{{ user.full_name[0] }}</div>
+                <div>
+                    <strong>{{ user.full_name.split()[0] }}</strong>
+                    <small>Cliente BanBif</small>
+                </div>
+            </div>
+        </div>
+    </header>
+    {% endif %}
+
+    <main class="{% if user %}app-main{% else %}public-main{% endif %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="toast" id="toast">Operacion lista</div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

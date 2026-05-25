@@ -1,0 +1,102 @@
+﻿{% extends "base.html" %}
+{% block content %}
+<section class="page-title reveal">
+    <span class="chip">AHORROS</span>
+    <h1>Gestiona tus cuentas de ahorro</h1>
+    <p>Consulta saldos, registra depositos y visualiza tu estado de cuenta.</p>
+</section>
+
+<section class="stat-grid reveal">
+    {% for account in accounts %}
+    <div class="stat-card account-card">
+        <span>{{ account.account_type }}</span>
+        <strong>S/ {{ "%.2f"|format(account.balance) }}</strong>
+        <small>{{ account.account_number }}</small>
+        <div class="status ok">{{ account.status }}</div>
+    </div>
+    {% endfor %}
+</section>
+
+<section class="two-columns reveal">
+    <div class="panel">
+        <div class="section-head">
+            <div>
+                <span class="chip">OPERACION</span>
+                <h2>Deposito rapido</h2>
+            </div>
+        </div>
+
+        <form method="post" action="/ahorros/deposito" id="depositForm">
+            <div class="input-group">
+                <label>Cuenta</label>
+                <select name="account_id">
+                    {% for account in accounts %}
+                    <option value="{{ account.id }}">{{ account.account_number }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>Monto</label>
+                <input type="number" step="0.01" name="amount" id="depositAmount" placeholder="Ingrese monto" required>
+            </div>
+
+            <div class="quick-amounts">
+                <button type="button" data-amount="50">S/ 50</button>
+                <button type="button" data-amount="100">S/ 100</button>
+                <button type="button" data-amount="200">S/ 200</button>
+                <button type="button" data-amount="500">S/ 500</button>
+            </div>
+
+            <button type="submit" class="primary-btn">Registrar deposito</button>
+        </form>
+    </div>
+
+    <div class="panel interactive-card">
+        <span class="chip">ESTADO</span>
+        <h2>Control de cuenta</h2>
+        <p>Manten una vista clara de tus movimientos y operaciones recientes.</p>
+
+        <div class="progress-box">
+            <div class="progress-info">
+                <span>Nivel de actividad</span>
+                <strong>72%</strong>
+            </div>
+            <div class="progress-bar">
+                <div style="width:72%"></div>
+            </div>
+        </div>
+
+        <button type="button" class="secondary-btn" data-toast="Estado de cuenta listo para revisar">Ver recomendacion</button>
+    </div>
+</section>
+
+<section class="panel reveal">
+    <div class="section-head">
+        <div>
+            <span class="chip">MOVIMIENTOS</span>
+            <h2>Estado de cuenta</h2>
+        </div>
+        <input class="table-filter" id="movementFilter" placeholder="Filtrar movimientos...">
+    </div>
+
+    <div class="table-wrap">
+        <table id="movementTable">
+            <tr>
+                <th>Fecha</th>
+                <th>Descripcion</th>
+                <th>Operacion</th>
+                <th>Monto</th>
+            </tr>
+            {% for m in movements %}
+            <tr>
+                <td>{{ m.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+                <td>{{ m.description }}</td>
+                <td>{{ m.operation_type }}</td>
+                <td>S/ {{ "%.2f"|format(m.amount) }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+{% endblock %}

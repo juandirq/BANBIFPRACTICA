@@ -1,0 +1,190 @@
+﻿import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../supabaseClient";
+
+export default function Pagos({ user, data, reload, showToast }) {
+  const cuentas = data?.accounts || [];
+
+  const [pagos, setPagos] = useState([]);
+  const [accountId, setAccountId] = useState(cuentas?.[0]?.id || "");
+  const [servicio, setServicio] = useState("luz");
+  const [numeroContrato, setNumeroContrato] = useState("");
+  const [monto, setMonto] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  const userId = user?.id || data?.user?.id || 1;
+
+  useEffect(() => {
+    if (!accountId && cuentas?.[0]?.id) {
+      setAccountId(cuentas[0].id);
+    }
+  }, [cuentas, accountId]);
+
+  const selectedAccount = useMemo(() => {
+    return cuentas.find((a) => String(a.id) === String(accountId)) || cuentas[0];
+  }, [cuentas, accountId]);
+
+  async function cargarPagos() {
+    const { data: pagosData, error } = await supabase
+      .from("pagos")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error cargando pagos:", error);
+      setMensaje("No se pudo cargar el historial de pagos.");
+      return;
+    }
+
+    setPagos(pagosData || []);
+  }
+
+  useEffect(() => {
+    cargarPagos();
+  }, [userId]);
+
+  async function registrarPago(e) {
+    e.preventDefault();
+    setMensaje("");
+
+    const montoNumero = Number(monto);
+
+    if (!selectedAccount) {
+      setMensaje("No hay una cuenta disponible para realizar el pago.");
+      return;
+    }
+
+    if (!numeroContrato || !montoNumero || montoNumero <= 0) {
+      setMensaje("Completa el numero de contrato y un monto valido.");
+      return;
+    }
+
+    setCargando(true);
+
+    const { error } = await supabase.from("pagos").insert([
+      {
+        user_id: Number(userId),
+        account_id: Number(selectedAccount.id),
+        servicio,
+        numero_contrato: numeroContrato,
+        monto: montoNumero,
+        estado: "completado",
+      },
+    ]);
+
+    setCargando(false);
+
+    if (error) {
+      console.error("Error registrando pago:", error);
+      setMensaje("No se pudo registrar el pago en la base de datos.");
+      return;
+    }
+
+    setMensaje("Pago registrado correctamente.");
+    if (showToast) showToast("Pago registrado correctamente");
+
+    setNumeroContrato("");
+    setMonto("");
+
+    await cargarPagos();
+    if (reload) await reload();
+  }
+
+  return (
+    <main className="pagos-page">
+      <section className="pagos-card pagos-hero">
+        <span className="pagos-tag">PAGOS</span>
+        <h1>Pagos de servicios</h1>
+        <p>
+          Realiza pagos de luz, agua, telefono, internet o gas desde tu banca digital.
+        </p>
+      </section>
+
+      <section className="pagos-card">
+        <h2>Nuevo pago</h2>
+
+        <form className="pagos-form" onSubmit={registrarPago}>
+          <label>
+            Cuenta de origen
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {cuentas.length === 0 ? (
+                <option value="">No tienes cuentas registradas</option>
+              ) : (
+                cuentas.map((cuenta) => (
+                  <option key={cuenta.id} value={cuenta.id}>
+                    {cuenta.account_number} - {cuenta.account_type} - {cuenta.currency || "PEN"}{" "}
+                    {Number(cuenta.balance || 0).toFixed(2)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+
+          <label>
+            Servicio
+            <select value={servicio} onChange={(e) => setServicio(e.target.value)}>
+              <option value="luz">Luz</option>
+              <option value="agua">Agua</option>
+              <option value="telefono">Telefono</option>
+              <option value="internet">Internet</option>
+              <option value="gas">Gas</option>
+            </select>
+          </label>
+
+          <label>
+            Numero de contrato
+            <input
+              type="text"
+              value={numeroContrato}
+              onChange={(e) => setNumeroContrato(e.target.value)}
+              placeholder="Ej: CTR-001"
+            />
+          </label>
+
+          <label>
+            Monto a pagar
+            <input
+              type="number"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              placeholder="Ej: 85.50"
+              min="1"
+              step="0.01"
+            />
+          </label>
+
+          <button type="submit" disabled={cargando || cuentas.length === 0}>
+            {cargando ? "Procesando..." : "Pagar servicio"}
+          </button>
+
+          {mensaje && <p className="pagos-mensaje">{mensaje}</p>}
+        </form>
+      </section>
+
+      <section className="pagos-card">
+        <h2>Historial de pagos</h2>
+
+        {pagos.length === 0 ? (
+          <p className="pagos-vacio">Aun no hay pagos registrados.</p>
+        ) : (
+          <div className="pagos-lista">
+            {pagos.map((pago) => (
+              <article className="pago-item" key={pago.id}>
+                <div>
+                  <strong>{String(pago.servicio).toUpperCase()}</strong>
+                  <p>Contrato: {pago.numero_contrato}</p>
+                </div>
+
+                <div className="pago-monto">
+                  <strong>S/ {Number(pago.monto || 0).toFixed(2)}</strong>
+                  <p>{pago.estado}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

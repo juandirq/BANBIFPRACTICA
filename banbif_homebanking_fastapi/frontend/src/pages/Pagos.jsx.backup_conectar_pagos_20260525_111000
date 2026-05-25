@@ -1,0 +1,220 @@
+﻿import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../supabaseClient";
+
+export default function Pagos({ user }) {
+  const [cuentas, setCuentas] = useState([]);
+  const [pagos, setPagos] = useState([]);
+  const [accountId, setAccountId] = useState("");
+  const [servicio, setServicio] = useState("luz");
+  const [numeroContrato, setNumeroContrato] = useState("");
+  const [monto, setMonto] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  const userId = useMemo(() => {
+    const candidatos = [];
+
+    if (user?.id) candidatos.push(user.id);
+    if (user?.user_id) candidatos.push(user.user_id);
+
+    const posiblesKeys = ["user", "usuario", "banbif_user", "banbifUser", "currentUser"];
+
+    posiblesKeys.forEach((key) => {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (parsed?.id) candidatos.push(parsed.id);
+        if (parsed?.user_id) candidatos.push(parsed.user_id);
+      } catch {
+        const raw = localStorage.getItem(key);
+        if (raw) candidatos.push(raw);
+      }
+    });
+
+    const numerico = candidatos
+      .map((valor) => Number(valor))
+      .find((valor) => Number.isInteger(valor) && valor > 0);
+
+    return numerico || 1;
+  }, [user]);
+
+  const cargarCuentas = async () => {
+    const { data, error } = await supabase
+      .from("account")
+      .select("id, account_number, account_type, balance, currency")
+      .eq("user_id", userId)
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("Error cargando cuentas:", error);
+      setCuentas([]);
+      return;
+    }
+
+    setCuentas(data || []);
+
+    if (data?.length > 0 && !accountId) {
+      setAccountId(String(data[0].id));
+    }
+  };
+
+  const cargarPagos = async () => {
+    const { data, error } = await supabase
+      .from("pagos")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error cargando pagos:", error);
+      setPagos([]);
+      return;
+    }
+
+    setPagos(data || []);
+  };
+
+  useEffect(() => {
+    cargarCuentas();
+    cargarPagos();
+  }, [userId]);
+
+  const registrarPago = async (e) => {
+    e.preventDefault();
+    setMensaje("");
+
+    if (!accountId || !servicio || !numeroContrato || !monto) {
+      setMensaje("Completa todos los campos para registrar el pago.");
+      return;
+    }
+
+    if (Number(monto) <= 0) {
+      setMensaje("El monto debe ser mayor a 0.");
+      return;
+    }
+
+    setCargando(true);
+
+    const { error } = await supabase.from("pagos").insert([
+      {
+        user_id: userId,
+        account_id: Number(accountId),
+        servicio,
+        numero_contrato: numeroContrato,
+        monto: Number(monto),
+        estado: "completado",
+      },
+    ]);
+
+    setCargando(false);
+
+    if (error) {
+      console.error("Error registrando pago:", error);
+      setMensaje("No se pudo registrar el pago. Revisa la consola.");
+      return;
+    }
+
+    setMensaje("Pago registrado correctamente.");
+    setNumeroContrato("");
+    setMonto("");
+    cargarPagos();
+  };
+
+  return (
+    <main className="pagos-page">
+      <section className="pagos-card pagos-hero">
+        <span className="pagos-tag">PAGOS</span>
+        <h1>Pagos de servicios</h1>
+        <p>
+          Realiza pagos de luz, agua, telefono, internet o gas desde tu banca digital.
+        </p>
+      </section>
+
+      <section className="pagos-card">
+        <h2>Nuevo pago</h2>
+
+        <form className="pagos-form" onSubmit={registrarPago}>
+          <label>
+            Cuenta de origen
+            <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {cuentas.length === 0 ? (
+                <option value="">No tienes cuentas registradas</option>
+              ) : (
+                cuentas.map((cuenta) => (
+                  <option key={cuenta.id} value={cuenta.id}>
+                    {cuenta.account_number} - {cuenta.account_type} - {cuenta.currency || "PEN"}{" "}
+                    {Number(cuenta.balance || 0).toFixed(2)}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+
+          <label>
+            Servicio
+            <select value={servicio} onChange={(e) => setServicio(e.target.value)}>
+              <option value="luz">Luz</option>
+              <option value="agua">Agua</option>
+              <option value="telefono">Telefono</option>
+              <option value="internet">Internet</option>
+              <option value="gas">Gas</option>
+            </select>
+          </label>
+
+          <label>
+            Numero de contrato
+            <input
+              type="text"
+              value={numeroContrato}
+              onChange={(e) => setNumeroContrato(e.target.value)}
+              placeholder="Ej: CTR-001"
+            />
+          </label>
+
+          <label>
+            Monto a pagar
+            <input
+              type="number"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              placeholder="Ej: 85.50"
+              min="1"
+              step="0.01"
+            />
+          </label>
+
+          <button type="submit" disabled={cargando || cuentas.length === 0}>
+            {cargando ? "Procesando..." : "Pagar servicio"}
+          </button>
+
+          {mensaje && <p className="pagos-mensaje">{mensaje}</p>}
+        </form>
+      </section>
+
+      <section className="pagos-card">
+        <h2>Historial de pagos</h2>
+
+        {pagos.length === 0 ? (
+          <p className="pagos-vacio">Aun no hay pagos registrados.</p>
+        ) : (
+          <div className="pagos-lista">
+            {pagos.map((pago) => (
+              <article className="pago-item" key={pago.id}>
+                <div>
+                  <strong>{String(pago.servicio).toUpperCase()}</strong>
+                  <p>Contrato: {pago.numero_contrato}</p>
+                </div>
+
+                <div className="pago-monto">
+                  <strong>S/ {Number(pago.monto || 0).toFixed(2)}</strong>
+                  <p>{pago.estado}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
