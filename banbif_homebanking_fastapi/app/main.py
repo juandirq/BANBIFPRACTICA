@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 import hashlib
 
@@ -258,7 +258,7 @@ def login(request: Request, document: str = Form(...), password: str = Form(...)
 
         if not user or not verify_password(password, user.password_hash):
 
-            return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "error": "Documento o contraseña incorrectos."}
+            return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "error": "Documento o contraseÃ±a incorrectos."}
 
             )
 
@@ -913,7 +913,8 @@ def update_credit_status(
 
 
 
-# ===== REACT API START =====
+# =====================================================
+# API PARA FRONTEND REACT
 from fastapi import Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -1239,367 +1240,12 @@ def api_update_credit_status(request: Request, data: dict = Body(...)):
         session.commit()
         return {"ok": True, "message": "Estado actualizado correctamente"}
 
-# ===== REACT API END =====
+# FIN API PARA FRONTEND REACT
+# =====================================================
 
-
-# ===== REGISTER FIX START =====
-from fastapi import Body
-from fastapi.responses import JSONResponse
-
-@app.post("/api/register2")
-def api_register2(data: dict = Body(...)):
-    document = str(data.get("document", "")).strip()
-    full_name = str(data.get("full_name", "")).strip()
-    email = str(data.get("email", "")).strip()
-    password = str(data.get("password", "")).strip()
-
-    if not document or not full_name or not email or not password:
-        return JSONResponse(
-            {"ok": False, "message": "Completa todos los campos para registrarte."},
-            status_code=400
-        )
-
-    with Session(engine) as session:
-        user = session.exec(select(User).where(User.document == document)).first()
-        email_owner = session.exec(select(User).where(User.email == email)).first()
-
-        if email_owner and (not user or email_owner.id != user.id):
-            return JSONResponse(
-                {"ok": False, "message": "Ese correo ya esta registrado con otro usuario."},
-                status_code=400
-            )
-
-        if user:
-            user.full_name = full_name.upper()
-            user.email = email
-            user.password_hash = hash_password(password)
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-        else:
-            user = User(
-                document=document,
-                full_name=full_name.upper(),
-                email=email,
-                password_hash=hash_password(password)
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-
-        account = session.exec(select(Account).where(Account.user_id == user.id)).first()
-
-        if not account:
-            account = Account(
-                user_id=user.id,
-                account_number=new_account_number(document),
-                account_type="Cuenta Ahorro Digital BanBif",
-                currency="PEN",
-                balance=0,
-                status="activa"
-            )
-            session.add(account)
-            session.commit()
-
-        response = JSONResponse({"ok": True, "user": user_to_dict(user)})
-        response.set_cookie("banbif_session", make_cookie(user.id), httponly=True, samesite="lax")
-        return response
-# ===== REGISTER FIX END =====
-
-
-# ===== REGISTER SUPER FIX START =====
-from fastapi import Body
-from fastapi.responses import JSONResponse
-
-@app.post("/api/register-fixed")
-def api_register_fixed(data: dict = Body(...)):
-    document = str(data.get("document", "")).strip()
-    full_name = str(data.get("full_name", "")).strip()
-    email = str(data.get("email", "")).strip()
-    password = str(data.get("password", "")).strip()
-
-    if not document or not full_name or not email or not password:
-        return JSONResponse(
-            {"ok": False, "message": "Completa todos los campos."},
-            status_code=400
-        )
-
-    with Session(engine) as session:
-        user = session.exec(select(User).where(User.document == document)).first()
-        email_owner = session.exec(select(User).where(User.email == email)).first()
-
-        if email_owner and (not user or email_owner.id != user.id):
-            return JSONResponse(
-                {"ok": False, "message": "Ese correo ya esta registrado con otro usuario."},
-                status_code=400
-            )
-
-        if user:
-            user.full_name = full_name.upper()
-            user.email = email
-            user.password_hash = hash_password(password)
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-        else:
-            user = User(
-                document=document,
-                full_name=full_name.upper(),
-                email=email,
-                password_hash=hash_password(password)
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-
-        account = session.exec(select(Account).where(Account.user_id == user.id)).first()
-
-        if not account:
-            account = Account(
-                user_id=user.id,
-                account_number=new_account_number(document),
-                account_type="Cuenta Ahorro Digital BanBif",
-                currency="PEN",
-                balance=0,
-                status="activa"
-            )
-            session.add(account)
-            session.commit()
-
-        response = JSONResponse({
-            "ok": True,
-            "user": {
-                "id": user.id,
-                "document": user.document,
-                "full_name": user.full_name,
-                "email": user.email,
-                "phone": user.phone,
-                "address": user.address,
-                "address": user.address
-            }
-        })
-        response.set_cookie("banbif_session", make_cookie(user.id), httponly=True, samesite="lax")
-        return response
-# ===== REGISTER SUPER FIX END =====
-
-
-# ===== REGISTER FINAL FIX START =====
-from fastapi import Body
-from fastapi.responses import JSONResponse
-
-@app.post("/api/register-final")
-def api_register_final(data: dict = Body(...)):
-    try:
-        document = str(data.get("document", "")).strip()
-        full_name = str(data.get("full_name", "")).strip()
-        email = str(data.get("email", "")).strip().lower()
-        password = str(data.get("password", "")).strip()
-
-        if not document or not full_name or not email or not password:
-            return JSONResponse(
-                {"ok": False, "message": "Completa todos los campos."},
-                status_code=400
-            )
-
-        if len(document) < 8:
-            return JSONResponse(
-                {"ok": False, "message": "El DNI debe tener al menos 8 digitos."},
-                status_code=400
-            )
-
-        with Session(engine) as session:
-            user_by_document = session.exec(
-                select(User).where(User.document == document)
-            ).first()
-
-            user_by_email = session.exec(
-                select(User).where(User.email == email)
-            ).first()
-
-            if user_by_email and user_by_document and user_by_email.id != user_by_document.id:
-                return JSONResponse(
-                    {"ok": False, "message": "Ese correo ya pertenece a otro usuario."},
-                    status_code=400
-                )
-
-            if user_by_email and not user_by_document:
-                return JSONResponse(
-                    {"ok": False, "message": "Ese correo ya esta registrado. Usa otro correo."},
-                    status_code=400
-                )
-
-            if user_by_document:
-                user = user_by_document
-                user.full_name = full_name.upper()
-                user.email = email
-                user.password_hash = hash_password(password)
-                session.add(user)
-                session.commit()
-                session.refresh(user)
-            else:
-                user = User(
-                    document=document,
-                    full_name=full_name.upper(),
-                    email=email,
-                    password_hash=hash_password(password),
-                    phone="999999999",
-                    address="Huancayo, Peru"
-                )
-                session.add(user)
-                session.commit()
-                session.refresh(user)
-
-            account = session.exec(
-                select(Account).where(Account.user_id == user.id)
-            ).first()
-
-            if not account:
-                account = Account(
-                    user_id=user.id,
-                    account_number=new_account_number(document),
-                    account_type="Cuenta Ahorro Digital BanBif",
-                    currency="PEN",
-                    balance=0.0,
-                    status="activa"
-                )
-                session.add(account)
-                session.commit()
-
-            response = JSONResponse({
-                "ok": True,
-                "message": "Cuenta creada correctamente.",
-                "user": {
-                    "id": user.id,
-                    "document": user.document,
-                    "full_name": user.full_name,
-                    "email": user.email,
-                    "phone": user.phone,
-                "address": user.address,
-                    "address": user.address
-                }
-            })
-
-            response.set_cookie(
-                "banbif_session",
-                make_cookie(user.id),
-                httponly=True,
-                samesite="lax"
-            )
-
-            return response
-
-    except Exception as e:
-        return JSONResponse(
-            {"ok": False, "message": "Error interno en registro: " + str(e)},
-            status_code=500
-        )
-# ===== REGISTER FINAL FIX END =====
-
-
-# ===== REGISTER SAFE REAL START =====
-from fastapi import Body
-from fastapi.responses import JSONResponse
-
-@app.post("/api/register-safe")
-def api_register_safe_real(data: dict = Body(...)):
-    try:
-        document = str(data.get("document", "")).strip()
-        full_name = str(data.get("full_name", "")).strip()
-        email = str(data.get("email", "")).strip().lower()
-        password = str(data.get("password", "")).strip()
-
-        if not document or not full_name or not email or not password:
-            return JSONResponse(
-                {"ok": False, "message": "Completa todos los campos."},
-                status_code=400
-            )
-
-        with Session(engine) as session:
-            existing_document = session.exec(
-                select(User).where(User.document == document)
-            ).first()
-
-            existing_email = session.exec(
-                select(User).where(User.email == email)
-            ).first()
-
-            if existing_email and not existing_document:
-                return JSONResponse(
-                    {"ok": False, "message": "Ese correo ya existe. Usa otro correo."},
-                    status_code=400
-                )
-
-            if existing_document:
-                user = existing_document
-                user.full_name = full_name.upper()
-                user.email = email
-                user.password_hash = hash_password(password)
-                user.phone = user.phone or "999999999"
-                user.address = user.address or "Huancayo, Peru"
-                session.add(user)
-                session.commit()
-                session.refresh(user)
-            else:
-                user = User(
-                    document=document,
-                    full_name=full_name.upper(),
-                    email=email,
-                    password_hash=hash_password(password),
-                    phone="999999999",
-                    address="Huancayo, Peru"
-                )
-                session.add(user)
-                session.commit()
-                session.refresh(user)
-
-            account = session.exec(
-                select(Account).where(Account.user_id == user.id)
-            ).first()
-
-            if not account:
-                account = Account(
-                    user_id=user.id,
-                    account_number=new_account_number(document),
-                    account_type="Cuenta Ahorro Digital BanBif",
-                    currency="PEN",
-                    balance=0.0,
-                    status="activa"
-                )
-                session.add(account)
-                session.commit()
-
-            response = JSONResponse({
-                "ok": True,
-                "message": "Cuenta creada correctamente.",
-                "user": {
-                    "id": user.id,
-                    "document": user.document,
-                    "full_name": user.full_name,
-                    "email": user.email,
-                    "phone": user.phone,
-                "address": user.address,
-                    "address": user.address
-                }
-            })
-
-            response.set_cookie(
-                "banbif_session",
-                make_cookie(user.id),
-                httponly=True,
-                samesite="lax"
-            )
-
-            return response
-
-    except Exception as e:
-        return JSONResponse(
-            {"ok": False, "message": "Error real: " + str(e)},
-            status_code=500
-        )
-# ===== REGISTER SAFE REAL END =====
-
-
-# ===== CORS LOCALHOST FIX =====
+
+# =====================================================
+# CORS PARA FRONTEND LOCAL
 try:
     app.add_middleware(
         CORSMiddleware,
@@ -1613,217 +1259,25 @@ try:
     )
 except Exception:
     pass
-# ===== CORS LOCALHOST FIX END =====
+# FIN CORS PARA FRONTEND LOCAL
+# =====================================================
 
 
-# ===== PING FIX START =====
+# =====================================================
+# HEALTH CHECKS
 @app.get("/api/ping")
 def api_ping():
     return {"ok": True, "message": "FastAPI conectado correctamente"}
-# ===== PING FIX END =====
 
 
-# ===== PING CHECK FINAL =====
-@app.get("/api/ping")
-def api_ping():
-    return {"ok": True, "message": "FastAPI funcionando"}
-# ===== PING CHECK FINAL END =====
+
+
+# FIN HEALTH CHECKS
+# =====================================================
 
-
-# ===== PING FINAL DEFINITIVO =====
-@app.get("/api/ping-final")
-def api_ping_final():
-    return {"ok": True, "message": "FastAPI conectado"}
-# ===== PING FINAL DEFINITIVO END =====
-
-
-# ===== REGISTER DB FINAL START =====
-from fastapi import Body as _Body, Response as _Response, HTTPException as _HTTPException
-from sqlmodel import Session as _Session, select as _select
-from app.db import engine as _engine, create_db_and_tables as _create_db_and_tables
-from app.models import User as _User, Account as _Account
-import hashlib as _hashlib
-
-@app.post("/api/register-db")
-def api_register_db_final(response: _Response, data: dict = _Body(...)):
-    _create_db_and_tables()
-
-    document = str(data.get("document", "")).strip()
-    full_name = str(data.get("full_name", "")).strip().upper()
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", "")).strip()
-
-    if not document or not full_name or not email or not password:
-        raise _HTTPException(status_code=400, detail="Completa todos los campos")
-
-    if len(document) < 8:
-        raise _HTTPException(status_code=400, detail="El DNI debe tener minimo 8 digitos")
-
-    if len(password) < 6:
-        raise _HTTPException(status_code=400, detail="La contrasena debe tener minimo 6 caracteres")
-
-    try:
-        password_hash = hash_password(password)
-    except Exception:
-        password_hash = _hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-    with _Session(_engine) as session:
-        user = session.exec(_select(_User).where(_User.document == document)).first()
-
-        if user:
-            user.full_name = full_name
-            user.email = email
-            user.password_hash = password_hash
-            if not user.phone:
-                user.phone = "999999999"
-            if not user.address:
-                user.address = "Peru"
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            message = "Cuenta actualizada con exito"
-        else:
-            user = _User(
-                document=document,
-                full_name=full_name,
-                email=email,
-                password_hash=password_hash,
-                phone="999999999",
-                address="Peru"
-            )
-            session.add(user)
-            session.commit()
-            session.refresh(user)
-            message = "Cuenta registrada con exito"
-
-        account = session.exec(_select(_Account).where(_Account.user_id == user.id)).first()
-
-        if not account:
-            try:
-                account_number = new_account_number(document)
-            except Exception:
-                account_number = f"BBF-{document[-4:]}-001"
-
-            account = _Account(
-                user_id=user.id,
-                account_number=account_number,
-                account_type="Cuenta Ahorro Digital BanBif",
-                currency="PEN",
-                balance=0.00,
-                status="activa"
-            )
-            session.add(account)
-            session.commit()
-
-        response.set_cookie(
-            key="user_id",
-            value=str(user.id),
-            httponly=True,
-            samesite="lax",
-            max_age=60 * 60 * 6
-        )
-
-        return {
-            "ok": True,
-            "message": message,
-            "user": {
-                "id": user.id,
-                "document": user.document,
-                "full_name": user.full_name,
-                "email": user.email
-            }
-        }
-# ===== REGISTER DB FINAL END =====
-
-
-# ===== REGISTER SUPABASE REAL FINAL START =====
-from fastapi import Body as _Body, Response as _Response, HTTPException as _HTTPException
-from sqlmodel import Session as _Session, select as _select
-from app.db import engine as _engine, create_db_and_tables as _create_db_and_tables
-from app.models import User as _User, Account as _Account
-import hashlib as _hashlib
-
-@app.post("/api/register-db")
-def api_register_db_real(response: _Response, data: dict = _Body(...)):
-    _create_db_and_tables()
-
-    document = str(data.get("document", "")).strip()
-    full_name = str(data.get("full_name", "")).strip().upper()
-    email = str(data.get("email", "")).strip().lower()
-    password = str(data.get("password", "")).strip()
-
-    if not document or not full_name or not email or not password:
-        raise _HTTPException(status_code=400, detail="Completa todos los campos")
-
-    if len(document) < 8:
-        raise _HTTPException(status_code=400, detail="El DNI debe tener minimo 8 digitos")
-
-    if len(password) < 6:
-        raise _HTTPException(status_code=400, detail="La contrasena debe tener minimo 6 caracteres")
-
-    try:
-        password_hash = hash_password(password)
-    except Exception:
-        password_hash = _hashlib.sha256(password.encode("utf-8")).hexdigest()
-
-    with _Session(_engine) as session:
-        user = session.exec(_select(_User).where(_User.document == document)).first()
-
-        if user:
-            raise _HTTPException(status_code=400, detail="Este DNI ya esta registrado")
-
-        user = _User(
-            document=document,
-            full_name=full_name,
-            email=email,
-            password_hash=password_hash,
-            phone="999999999",
-            address="Peru"
-        )
-
-        session.add(user)
-        session.commit()
-        session.refresh(user)
-
-        try:
-            account_number = new_account_number(document)
-        except Exception:
-            account_number = f"BBF-{document[-4:]}-001"
-
-        account = _Account(
-            user_id=user.id,
-            account_number=account_number,
-            account_type="Cuenta Ahorro Digital BanBif",
-            currency="PEN",
-            balance=0.00,
-            status="activa"
-        )
-
-        session.add(account)
-        session.commit()
-
-        response.set_cookie(
-            key="user_id",
-            value=str(user.id),
-            httponly=True,
-            samesite="lax",
-            max_age=60 * 60 * 6
-        )
-
-        return {
-            "ok": True,
-            "message": "Cuenta creada y guardada con exito",
-            "user": {
-                "id": user.id,
-                "document": user.document,
-                "full_name": user.full_name,
-                "email": user.email
-            }
-        }
-# ===== REGISTER SUPABASE REAL FINAL END =====
-
-
-# ===== REGISTER COMPLETE PHONE START =====
+
+# =====================================================
+# REGISTRO COMPLETO DE CLIENTE
 from fastapi import Body as _BodyC, HTTPException as _HTTPExceptionC
 from sqlmodel import Session as _SessionC, select as _selectC
 from app.db import engine as _engineC, create_db_and_tables as _create_db_and_tablesC
@@ -1905,4 +1359,9 @@ def api_register_complete(data: dict = _BodyC(...)):
                 "address": user.address
             }
         }
-# ===== REGISTER COMPLETE PHONE END =====
+# FIN REGISTRO COMPLETO DE CLIENTE
+# =====================================================
+
+
+
+

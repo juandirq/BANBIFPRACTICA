@@ -1,4 +1,4 @@
-import Pagos from "./pages/Pagos";
+﻿import Pagos from "./pages/Pagos";
 import { SUPABASE_URL, SUPABASE_KEY } from "./supabaseDirectConfig";
 import { useEffect, useMemo, useState } from "react";
 
@@ -25,48 +25,6 @@ function money(value) {
 }
 
 export default function App() {
-  /* FIX_NOTIFICACIONES_LEIDAS_BANBIF */
-  useEffect(() => {
-    const hideNotificationBadge = () => {
-      const read = localStorage.getItem("banbif_notificaciones_leidas") === "1";
-
-      document.querySelectorAll("button").forEach((btn) => {
-        const text = (btn.textContent || "").toLowerCase();
-
-        if (text.includes("notificaciones")) {
-          btn.querySelectorAll("span, i, b, em").forEach((el) => {
-            const value = (el.textContent || "").trim();
-
-            if (/^\d+$/.test(value)) {
-              el.style.display = read ? "none" : "";
-            }
-          });
-        }
-      });
-    };
-
-    const markAsRead = (event) => {
-      const btn = event.target.closest("button");
-
-      if (btn && (btn.textContent || "").toLowerCase().includes("notificaciones")) {
-        localStorage.setItem("banbif_notificaciones_leidas", "1");
-        setTimeout(hideNotificationBadge, 0);
-      }
-    };
-
-    hideNotificationBadge();
-
-    document.addEventListener("click", markAsRead);
-
-    const observer = new MutationObserver(hideNotificationBadge);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      document.removeEventListener("click", markAsRead);
-      observer.disconnect();
-    };
-  }, []);
-
   const [user, setUser] = useState(null);
   const [data, setData] = useState(null);
   const [core, setCore] = useState(null);
@@ -564,7 +522,7 @@ function Login({ loadDashboard, setView, setAuth, showToast }) {
 
       await loadDashboard();
       setView("dashboard");
-      showToast("Sesion iniciada correctamente");
+      showToast("Sesion iniciada correctamente ?");
     } catch (e) {
       showToast(e.message || "Error de conexion");
     }
@@ -710,7 +668,7 @@ function Register({ loadDashboard, setView, setAuth, showToast }) {
 
       await loadDashboard();
       setView("dashboard");
-      showToast("Cuenta creada y sesion iniciada con exito");
+      showToast("Cuenta creada y sesion iniciada con exito ?");
     } catch (e) {
       showToast(e.message || "Error de conexion");
     }
@@ -1044,7 +1002,7 @@ function DashboardPagosResumen({ data, setView }) {
 
   return (
     <section className="dash-payments-panel">
-      <div className="dash-payments-head dashboard-pagos-darkfix">
+      <div className="dash-payments-head">
         <div>
           <span>PAGOS DE SERVICIOS</span>
           <h2>Resumen rapido de pagos</h2>
@@ -1216,8 +1174,8 @@ function Dashboard({ data, setView }) {
 function Ahorros({ data, reload, showToast }) {
   const [account, setAccount] = useState(data?.accounts?.[0]?.id || "");
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [goal, setGoal] = useState("");
+  const [description, setDescription] = useState("Deposito a cuenta de ahorros");
+  const [goal, setGoal] = useState(5000);
 
   const selectedAccount = useMemo(() => {
     return data?.accounts?.find((a) => String(a.id) === String(account)) || data?.accounts?.[0];
@@ -2002,7 +1960,7 @@ function Transferencias({ data, reload, showToast }) {
         <Panel title="Verificacion de seguridad">
           <div className="security-panel-inner">
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Validacion de saldo</strong>
                 <p>El sistema valida montos invalidos y evita que la cuenta quede negativa.</p>
@@ -2010,7 +1968,7 @@ function Transferencias({ data, reload, showToast }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Regla de cuenta</strong>
                 <p>No se permite transferir a la misma cuenta origen.</p>
@@ -2018,7 +1976,7 @@ function Transferencias({ data, reload, showToast }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Registro de operacion</strong>
                 <p>La operacion se registra en la cuenta origen y destino.</p>
@@ -2027,9 +1985,9 @@ function Transferencias({ data, reload, showToast }) {
 
             <div className="core-flow">
               <div><span>Debito</span><b>{originNumber || "Origen"}</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Sistema</span><b>Validacion</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Abono</span><b>{destinationClean || "Destino"}</b></div>
             </div>
 
@@ -2148,7 +2106,7 @@ function Perfil({ user }) {
         <Panel title="Resumen de seguridad">
           <div className="security-panel-inner">
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Acceso protegido</strong>
                 <p>Tu cuenta utiliza credenciales de ingreso activas.</p>
@@ -2156,7 +2114,7 @@ function Perfil({ user }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Datos registrados</strong>
                 <p>Tu informacion personal se encuentra disponible en el sistema.</p>
@@ -2164,7 +2122,7 @@ function Perfil({ user }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Operaciones habilitadas</strong>
                 <p>Puedes operar con ahorros, creditos y transferencias.</p>
@@ -2422,7 +2380,7 @@ function Toast({ text }) {
 
   return (
     <div className={text ? `toast show ${isSuccess ? "success" : ""}` : "toast"}>
-      <span className="toast-mark">{isSuccess ? "\u2713" : "!"}</span>
+      <span className="toast-mark">{isSuccess ? "âœ“" : "!"}</span>
       <strong>{text}</strong>
     </div>
   );

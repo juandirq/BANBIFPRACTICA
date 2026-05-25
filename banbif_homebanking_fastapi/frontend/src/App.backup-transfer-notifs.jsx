@@ -25,48 +25,6 @@ function money(value) {
 }
 
 export default function App() {
-  /* FIX_NOTIFICACIONES_LEIDAS_BANBIF */
-  useEffect(() => {
-    const hideNotificationBadge = () => {
-      const read = localStorage.getItem("banbif_notificaciones_leidas") === "1";
-
-      document.querySelectorAll("button").forEach((btn) => {
-        const text = (btn.textContent || "").toLowerCase();
-
-        if (text.includes("notificaciones")) {
-          btn.querySelectorAll("span, i, b, em").forEach((el) => {
-            const value = (el.textContent || "").trim();
-
-            if (/^\d+$/.test(value)) {
-              el.style.display = read ? "none" : "";
-            }
-          });
-        }
-      });
-    };
-
-    const markAsRead = (event) => {
-      const btn = event.target.closest("button");
-
-      if (btn && (btn.textContent || "").toLowerCase().includes("notificaciones")) {
-        localStorage.setItem("banbif_notificaciones_leidas", "1");
-        setTimeout(hideNotificationBadge, 0);
-      }
-    };
-
-    hideNotificationBadge();
-
-    document.addEventListener("click", markAsRead);
-
-    const observer = new MutationObserver(hideNotificationBadge);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      document.removeEventListener("click", markAsRead);
-      observer.disconnect();
-    };
-  }, []);
-
   const [user, setUser] = useState(null);
   const [data, setData] = useState(null);
   const [core, setCore] = useState(null);
@@ -2027,9 +1985,9 @@ function Transferencias({ data, reload, showToast }) {
 
             <div className="core-flow">
               <div><span>Debito</span><b>{originNumber || "Origen"}</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Sistema</span><b>Validacion</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Abono</span><b>{destinationClean || "Destino"}</b></div>
             </div>
 

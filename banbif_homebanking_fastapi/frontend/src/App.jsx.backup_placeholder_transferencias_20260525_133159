@@ -1,5 +1,4 @@
-import Pagos from "./pages/Pagos";
-import { SUPABASE_URL, SUPABASE_KEY } from "./supabaseDirectConfig";
+﻿import Pagos from "./pages/Pagos";
 import { useEffect, useMemo, useState } from "react";
 
 const API = "";
@@ -25,48 +24,6 @@ function money(value) {
 }
 
 export default function App() {
-  /* FIX_NOTIFICACIONES_LEIDAS_BANBIF */
-  useEffect(() => {
-    const hideNotificationBadge = () => {
-      const read = localStorage.getItem("banbif_notificaciones_leidas") === "1";
-
-      document.querySelectorAll("button").forEach((btn) => {
-        const text = (btn.textContent || "").toLowerCase();
-
-        if (text.includes("notificaciones")) {
-          btn.querySelectorAll("span, i, b, em").forEach((el) => {
-            const value = (el.textContent || "").trim();
-
-            if (/^\d+$/.test(value)) {
-              el.style.display = read ? "none" : "";
-            }
-          });
-        }
-      });
-    };
-
-    const markAsRead = (event) => {
-      const btn = event.target.closest("button");
-
-      if (btn && (btn.textContent || "").toLowerCase().includes("notificaciones")) {
-        localStorage.setItem("banbif_notificaciones_leidas", "1");
-        setTimeout(hideNotificationBadge, 0);
-      }
-    };
-
-    hideNotificationBadge();
-
-    document.addEventListener("click", markAsRead);
-
-    const observer = new MutationObserver(hideNotificationBadge);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      document.removeEventListener("click", markAsRead);
-      observer.disconnect();
-    };
-  }, []);
-
   const [user, setUser] = useState(null);
   const [data, setData] = useState(null);
   const [core, setCore] = useState(null);
@@ -564,7 +521,7 @@ function Login({ loadDashboard, setView, setAuth, showToast }) {
 
       await loadDashboard();
       setView("dashboard");
-      showToast("Sesion iniciada correctamente");
+      showToast("Sesion iniciada correctamente ?");
     } catch (e) {
       showToast(e.message || "Error de conexion");
     }
@@ -710,7 +667,7 @@ function Register({ loadDashboard, setView, setAuth, showToast }) {
 
       await loadDashboard();
       setView("dashboard");
-      showToast("Cuenta creada y sesion iniciada con exito");
+      showToast("Cuenta creada y sesion iniciada con exito ?");
     } catch (e) {
       showToast(e.message || "Error de conexion");
     }
@@ -990,116 +947,6 @@ function Topbar({ user, setView, dark, setDark, showToast }) {
   );
 }
 
-
-function DashboardPagosResumen({ data, setView }) {
-  const [pagos, setPagos] = useState([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let activo = true;
-
-    async function cargarPagos() {
-      try {
-        if (!SUPABASE_URL || !SUPABASE_KEY || !data?.user?.id) return;
-
-        const url =
-          `${SUPABASE_URL}/rest/v1/pagos` +
-          `?select=*&user_id=eq.${Number(data.user.id)}&order=created_at.desc`;
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        const text = await res.text();
-        const result = text ? JSON.parse(text) : [];
-
-        if (!res.ok) {
-          throw new Error(result?.message || result?.details || "No se pudieron cargar pagos.");
-        }
-
-        if (activo) {
-          setPagos(Array.isArray(result) ? result : []);
-          setError("");
-        }
-      } catch (err) {
-        console.error("Error cargando pagos en dashboard:", err);
-        if (activo) setError("No se pudo cargar el resumen de pagos.");
-      }
-    }
-
-    cargarPagos();
-
-    return () => {
-      activo = false;
-    };
-  }, [data?.user?.id]);
-
-  const totalPagado = pagos.reduce((sum, pago) => sum + Number(pago.monto || 0), 0);
-  const ultimoPago = pagos[0];
-
-  return (
-    <section className="dash-payments-panel">
-      <div className="dash-payments-head dashboard-pagos-darkfix">
-        <div>
-          <span>PAGOS DE SERVICIOS</span>
-          <h2>Resumen rapido de pagos</h2>
-          <p>Visualiza un resumen de tus pagos de servicios.</p>
-        </div>
-
-        <button type="button" onClick={() => setView("pagos")}>
-          Ir a pagos
-        </button>
-      </div>
-
-      <div className="dash-payments-metrics">
-        <article>
-          <span>Pagos realizados</span>
-          <strong>{pagos.length}</strong>
-          <p>Servicios registrados</p>
-        </article>
-
-        <article>
-          <span>Total pagado en servicios</span>
-          <strong>{money(totalPagado)}</strong>
-          <p>Monto acumulado</p>
-        </article>
-
-        <article>
-          <span>Ultimo servicio</span>
-          <strong>{ultimoPago ? String(ultimoPago.servicio).toUpperCase() : "Sin pagos"}</strong>
-          <p>{ultimoPago ? `Contrato: ${ultimoPago.numero_contrato}` : "Aun no hay pagos"}</p>
-        </article>
-      </div>
-
-      {error && <p className="dash-payments-error">{error}</p>}
-
-      <div className="dash-payments-list">
-        {pagos.length === 0 ? (
-          <p className="dash-payments-empty">Aun no hay pagos registrados.</p>
-        ) : (
-          pagos.slice(0, 4).map((pago) => (
-            <article className="dash-payment-row" key={pago.id}>
-              <div>
-                <strong>{String(pago.servicio).toUpperCase()}</strong>
-                <span>Contrato: {pago.numero_contrato}</span>
-              </div>
-
-              <div>
-                <strong>{money(pago.monto)}</strong>
-                <span>{pago.estado}</span>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
 function Dashboard({ data, setView }) {
   if (!data) return null;
 
@@ -1158,7 +1005,7 @@ function Dashboard({ data, setView }) {
         <button className="smart-card" onClick={() => setView("transferencias")}>
           <span>Operacion segura</span>
           <strong>Transferir dinero</strong>
-          <p>Transfiere dinero entre cuentas registradas.</p>
+          <p>Realiza una transferencia entre cuentas registradas.</p>
         </button>
 
         <button className="smart-card" onClick={() => setView("creditos")}>
@@ -1190,11 +1037,9 @@ function Dashboard({ data, setView }) {
         <button className="promo-card promo-dark" onClick={() => setView("transferencias")}>
           <span>TRANSFERENCIAS</span>
           <strong>Opera seguro</strong>
-          <p>Envia dinero a otra cuenta de forma rapida y segura.</p>
+          <p>Envia dinero entre cuentas rapidamente.</p>
         </button>
       </section>
-
-      <DashboardPagosResumen data={data} setView={setView} />
 
       <section className="split-grid">
         <Panel title="Mis cuentas">
@@ -1203,7 +1048,7 @@ function Dashboard({ data, setView }) {
           ))}
         </Panel>
 
-        <Panel title="Ultimos movimientos de cuenta">
+        <Panel title="Ultimos movimientos">
           {data.movements.slice(0, 5).map((m) => (
             <Line key={m.id} title={m.description} text={m.created_at} value={money(m.amount)} />
           ))}
@@ -1216,8 +1061,8 @@ function Dashboard({ data, setView }) {
 function Ahorros({ data, reload, showToast }) {
   const [account, setAccount] = useState(data?.accounts?.[0]?.id || "");
   const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [goal, setGoal] = useState("");
+  const [description, setDescription] = useState("Deposito a cuenta de ahorros");
+  const [goal, setGoal] = useState(5000);
 
   const selectedAccount = useMemo(() => {
     return data?.accounts?.find((a) => String(a.id) === String(account)) || data?.accounts?.[0];
@@ -1978,7 +1823,7 @@ function Transferencias({ data, reload, showToast }) {
             <input
               value={form.description}
               onChange={(e) => update("description", e.target.value)}
-              placeholder="Ejemplo: apoyo familiar, alquiler o envio personal"
+              placeholder="Ejemplo: pago de servicio o apoyo familiar"
             />
 
             <div className={`transfer-preview ${canSubmit ? "ok" : "warning"}`}>
@@ -2002,7 +1847,7 @@ function Transferencias({ data, reload, showToast }) {
         <Panel title="Verificacion de seguridad">
           <div className="security-panel-inner">
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Validacion de saldo</strong>
                 <p>El sistema valida montos invalidos y evita que la cuenta quede negativa.</p>
@@ -2010,7 +1855,7 @@ function Transferencias({ data, reload, showToast }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Regla de cuenta</strong>
                 <p>No se permite transferir a la misma cuenta origen.</p>
@@ -2018,7 +1863,7 @@ function Transferencias({ data, reload, showToast }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Registro de operacion</strong>
                 <p>La operacion se registra en la cuenta origen y destino.</p>
@@ -2027,9 +1872,9 @@ function Transferencias({ data, reload, showToast }) {
 
             <div className="core-flow">
               <div><span>Debito</span><b>{originNumber || "Origen"}</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Sistema</span><b>Validacion</b></div>
-              <em>→</em>
+              <em>â†’</em>
               <div><span>Abono</span><b>{destinationClean || "Destino"}</b></div>
             </div>
 
@@ -2148,7 +1993,7 @@ function Perfil({ user }) {
         <Panel title="Resumen de seguridad">
           <div className="security-panel-inner">
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Acceso protegido</strong>
                 <p>Tu cuenta utiliza credenciales de ingreso activas.</p>
@@ -2156,7 +2001,7 @@ function Perfil({ user }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Datos registrados</strong>
                 <p>Tu informacion personal se encuentra disponible en el sistema.</p>
@@ -2164,7 +2009,7 @@ function Perfil({ user }) {
             </div>
 
             <div className="security-row">
-              <i>{"\u2713"}</i>
+              <i>âœ“</i>
               <div>
                 <strong>Operaciones habilitadas</strong>
                 <p>Puedes operar con ahorros, creditos y transferencias.</p>
@@ -2422,16 +2267,11 @@ function Toast({ text }) {
 
   return (
     <div className={text ? `toast show ${isSuccess ? "success" : ""}` : "toast"}>
-      <span className="toast-mark">{isSuccess ? "\u2713" : "!"}</span>
+      <span className="toast-mark">{isSuccess ? "âœ“" : "!"}</span>
       <strong>{text}</strong>
     </div>
   );
 }
-
-
-
-
-
 
 
 
